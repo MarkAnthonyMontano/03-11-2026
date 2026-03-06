@@ -151,7 +151,7 @@ router.delete("/delete_tosf/:tosf_id", async (req, res) => {
 router.get("/scholarship_types", async (req, res) => {
   try {
     const [rows] = await db3.query(
-      "SELECT id, scholarship_name, scholarship_status, created_at FROM scholarship_type ORDER BY id DESC"
+      "SELECT id, scholarship_name, rfd, tfd, mfd, nfd, afd, scholarship_status, created_at FROM scholarship_type ORDER BY id DESC"
     );
     res.json(rows);
   } catch (error) {
@@ -197,7 +197,7 @@ router.post("/insert_scholarship_type", async (req, res) => {
 
 router.put("/update_scholarship_type/:id", async (req, res) => {
   const { id } = req.params;
-  const { scholarship_name, scholarship_status } = req.body;
+  const { scholarship_name, rfd, tfd, mfd, nfd, afd, scholarship_status } = req.body;
 
   if (!scholarship_name || !String(scholarship_name).trim()) {
     return res.status(400).json({ message: "scholarship_name is required" });
@@ -206,9 +206,18 @@ router.put("/update_scholarship_type/:id", async (req, res) => {
   try {
     const [result] = await db3.query(
       `UPDATE scholarship_type
-       SET scholarship_name = ?, scholarship_status = ?
+       SET scholarship_name = ?, rfd = ?, tfd = ?, mfd = ?, nfd = ?, afd = ?, scholarship_status = ?
        WHERE id = ?`,
-      [String(scholarship_name).trim(), scholarship_status ?? 1, id]
+      [
+        String(scholarship_name).trim(),
+        rfd ?? 0,
+        tfd ?? 0,
+        mfd ?? 0,
+        nfd ?? 0,
+        afd ?? 0,
+        scholarship_status ?? 1,
+        id
+      ]
     );
 
     if (result.affectedRows === 0) {

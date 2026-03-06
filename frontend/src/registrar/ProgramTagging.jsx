@@ -18,6 +18,7 @@ import { TextField, InputAdornment } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import ProgramTaggingFilter from "../registrar/ProgramTaggingFilter";
 import { Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { FaFileExcel } from "react-icons/fa";
 
 
 const ProgramTagging = () => {
@@ -90,6 +91,8 @@ const ProgramTagging = () => {
     message: "",
     severity: "success",
   });
+  const importInputRef = useRef(null);
+  const [importingXlsx, setImportingXlsx] = useState(false);
 
   const pageId = 35;
 
@@ -557,6 +560,45 @@ const ProgramTagging = () => {
     }
   };
 
+  const handleProgramTaggingImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImportingXlsx(true);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await axios.post(`${API_BASE_URL}/import-program-tagging-xlsx`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (response.data?.success) {
+        setSnackbar({
+          open: true,
+          message: response.data.message || "Program tagging import completed.",
+          severity: "success",
+        });
+        fetchTaggedPrograms();
+      } else {
+        setSnackbar({
+          open: true,
+          message: response.data?.error || "Program tagging import failed.",
+          severity: "error",
+        });
+      }
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.error || "Program tagging import failed.",
+        severity: "error",
+      });
+    } finally {
+      setImportingXlsx(false);
+      event.target.value = "";
+    }
+  };
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 100;
 
@@ -654,26 +696,44 @@ const ProgramTagging = () => {
           PROGRAM AND COURSE MANAGEMENT
         </Typography>
 
-        <TextField
-          variant="outlined"
-          placeholder="Search Curriculum / Course / Year / Semester"
-          size="small"
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-          }}
-          sx={{
-            width: 450,
-            backgroundColor: "#fff",
-            borderRadius: 1,
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "10px",
-            },
-          }}
-          InputProps={{
-            startAdornment: <SearchIcon sx={{ mr: 1, color: "gray" }} />,
-          }}
-        />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <TextField
+            variant="outlined"
+            placeholder="Search Curriculum / Course / Year / Semester"
+            size="small"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+            }}
+            sx={{
+              width: 450,
+              backgroundColor: "#fff",
+              borderRadius: 1,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "10px",
+              },
+            }}
+            InputProps={{
+              startAdornment: <SearchIcon sx={{ mr: 1, color: "gray" }} />,
+            }}
+          />
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleProgramTaggingImport}
+            style={{ display: "none" }}
+          />
+          <Button
+            variant="contained"
+            onClick={() => importInputRef.current?.click()}
+            disabled={importingXlsx}
+            sx={{ height: 40, textTransform: "none", fontWeight: "bold", minWidth: 210 }}
+          >
+            <FaFileExcel style={{ marginRight: 8 }} />
+            {importingXlsx ? "Importing..." : "Import Program Tagging"}
+          </Button>
+        </Box>
 
 
       </Box>

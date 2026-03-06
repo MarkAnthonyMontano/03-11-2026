@@ -144,9 +144,9 @@ router.delete("/delete_matriculation/:student_number/:id", async (req, res) => {
 });
 
 router.post("/send-temp-password", async (req, res) => {
-  const { student_number, email } = req.body;
+  const { email } = req.body;
 
-  if (!student_number || !email) {
+  if (!email) {
     return res
       .status(400)
       .json({ message: "student_number and email are required" });
@@ -154,7 +154,7 @@ router.post("/send-temp-password", async (req, res) => {
 
   try {
     const tempPassword = generateTempPassword();
-    tempPasswords.set(String(student_number), {
+    tempPasswords.set(String(email), {
       code: tempPassword,
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
@@ -167,6 +167,7 @@ router.post("/send-temp-password", async (req, res) => {
     });
 
     res.json({ success: true, message: "Temporary password sent" });
+    console.log(tempPassword);
   } catch (error) {
     console.error("Error sending temp password:", error);
     res.status(500).json({ message: "Failed to send temporary password" });
@@ -174,27 +175,32 @@ router.post("/send-temp-password", async (req, res) => {
 });
 
 router.post("/verify-temp-password", async (req, res) => {
-  const { student_number, tempPassword } = req.body;
+  const { email, tempPassword } = req.body;
 
-  if (!student_number || !tempPassword) {
+  if (!email || !tempPassword) {
     return res
       .status(400)
-      .json({ message: "student_number and tempPassword are required" });
+      .json({ message: "email and tempPassword are required" });
   }
 
-  const entry = tempPasswords.get(String(student_number));
+  const entry = tempPasswords.get(String(email));
+  
   if (!entry) {
     return res.status(400).json({ message: "No temporary password found" });
   }
+
   if (Date.now() > entry.expiresAt) {
-    tempPasswords.delete(String(student_number));
+    tempPasswords.delete(String(email));
     return res.status(400).json({ message: "Temporary password expired" });
   }
+
   if (entry.code !== tempPassword) {
     return res.status(400).json({ message: "Invalid temporary password" });
   }
 
-  tempPasswords.delete(String(student_number));
+  tempPasswords.delete(String(email));
+
+  
   res.json({ success: true });
 });
 

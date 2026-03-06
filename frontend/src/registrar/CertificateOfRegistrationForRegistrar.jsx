@@ -10,6 +10,7 @@ import axios from "axios";
 import {
   Box,
   TextField,
+  MenuItem,
   Container,
   Typography,
   Button,
@@ -39,7 +40,6 @@ const CertificateOfRegistration = forwardRef(
     const settings = useContext(SettingsContext);
     const [fetchedLogo, setFetchedLogo] = useState(null);
     const [companyName, setCompanyName] = useState("");
-    const [branches, setBranches] = useState([]);
     const [snack, setSnack] = useState({
       open: false,
       message: "",
@@ -66,20 +66,9 @@ const CertificateOfRegistration = forwardRef(
           setFetchedLogo(EaristLogo);
         }
 
-        // ? load dynamic name + branch metadata
+        // ? load dynamic name + address
         if (settings.company_name) setCompanyName(settings.company_name);
-        if (settings?.branches) {
-          try {
-            const parsed =
-              typeof settings.branches === "string"
-                ? JSON.parse(settings.branches)
-                : settings.branches;
-            setBranches(parsed);
-          } catch (err) {
-            console.error("Failed to parse branches:", err);
-            setBranches([]);
-          }
-        }
+        if (settings.campus_address) setCampusAddress(settings.campus_address);
       }
     }, [settings]);
 
@@ -170,25 +159,10 @@ const CertificateOfRegistration = forwardRef(
     const [campusAddress, setCampusAddress] = useState("");
 
     useEffect(() => {
-      if (!settings) return;
-
-      const branchId = person?.campus;
-      const matchedBranch = branches.find(
-        (branch) => String(branch?.id) === String(branchId),
-      );
-
-      if (matchedBranch?.address) {
-        setCampusAddress(matchedBranch.address);
-        return;
+      if (settings && settings.address) {
+        setCampusAddress(settings.address);
       }
-
-      if (settings.campus_address) {
-        setCampusAddress(settings.campus_address);
-        return;
-      }
-
-      setCampusAddress(settings.address || "");
-    }, [settings, branches, person?.campus]);
+    }, [settings]);
 
     const [hasAccess, setHasAccess] = useState(null);
     const [approvedBy, setApprovedBy] = useState(null);
@@ -480,6 +454,8 @@ const CertificateOfRegistration = forwardRef(
     const [confirmTarget, setConfirmTarget] = useState(null);
     const [savedUnifast, setSavedUnifast] = useState(false);
     const [savedMatriculation, setSavedMatriculation] = useState(false);
+    const [scholarshipModalOpen, setScholarshipModalOpen] = useState(false);
+    const [selectedScholarshipId, setSelectedScholarshipId] = useState("");
 
     useEffect(() => {
       if (!student_number || !student_number.trim()) return; // don't run if empty
@@ -630,6 +606,7 @@ const CertificateOfRegistration = forwardRef(
     const totalCombined = totalCourseUnits + totalLabUnits;
 
     const [tosf, setTosfData] = useState([]);
+    const [scholarshipTypes, setScholarshipTypes] = useState([]);
     const [curriculumOptions, setCurriculumOptions] = useState([]);
 
     useEffect(() => {
@@ -669,9 +646,25 @@ const CertificateOfRegistration = forwardRef(
         showSnackbar("Error fetching data", "error");
       }
     };
+    
+    const fetchScholarship = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/scholarship_types`);
+        const activeTypes = Array.isArray(res.data)
+          ? res.data.filter((item) => Number(item.scholarship_status) === 1)
+          : [];
+        setScholarshipTypes(activeTypes);
+      } catch (error) {
+        showSnackbar("Error fetching scholarship types", "error");
+      }
+    };
 
     useEffect(() => {
       fetchTosf();
+    }, []);
+    
+    useEffect(() => {
+      fetchScholarship();
     }, []);
 
     const [requestedData, setRequestedData] = useState({
@@ -712,8 +705,15 @@ const CertificateOfRegistration = forwardRef(
     const isFirstYearFirstSem = isFirstYear && isFirstSemester;
 
     useEffect(() => {
-      if (!data[0] || !tosf[0] || !enrolled || !totalLabFees || !totalLecFees || !activeSchoolYear[0])
+      if (
+        !data[0] ||
+        !tosf[0] ||
+        !activeSchoolYear[0] ||
+        totalLabFees == null ||
+        totalLecFees == null
+      ) {
         return;
+      }
 
       const totalCourseUnits = enrolled.reduce(
         (sum, item) => sum + (parseFloat(item.course_unit) || 0),
@@ -732,7 +732,7 @@ const CertificateOfRegistration = forwardRef(
         ? baseTotalSum - tosf[0]?.nstp_fees
         : baseTotalSum;
       const schoolIdFee = isFirstYearFirstSem
-        ? Number(tosf[0]?.school_id_fees || 0)
+        ? Number(tosf[0]?.school_id_fees || 0)  
         : 0;
       const totalTotalTOSF =
         totalSum +
@@ -782,6 +782,128 @@ const CertificateOfRegistration = forwardRef(
       });
     }, [data, tosf, enrolled, totalLabFees, totalLecFees]);
 
+    const toNumber = (value) => {
+      if (typeof value === "string") {
+        const cleaned = value.replace(/[^0-9.-]/g, "");
+        const parsedFromString = Number(cleaned);
+        return Number.isFinite(parsedFromString) ? parsedFromString : 0;
+      }
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const toDecimalPercent = (value) => {
+      const numeric = toNumber(value);
+      if (numeric <= 0) return 0;
+      return numeric > 1 ? numeric / 100 : numeric;
+    };
+
+    const round2 = (value) => Math.round((toNumber(value) + Number.EPSILON) * 100) / 100;
+
+    const applyScholarshipToMatriculationFees = (baseData, scholarship) => {
+      if (!scholarship) {
+        return {
+          payload: { ...baseData, scholarship_id: null },
+          computed: null,
+        };
+      }
+
+      const registrationFee = toNumber(baseData.registration_fees);
+      const tuitionFee = toNumber(baseData.tuition_fees);
+      const nstpFee = toNumber(baseData.nstp_fees);
+
+      const miscKeys = [
+        "cultural_fees",
+        "athletic_fees",
+        "development_fees",
+        "guidance_fees",
+        "library_fees",
+        "medical_and_dental_fees",
+        "school_id_fees",
+        "computer_fees",
+        "laboratory_fees",
+      ];
+
+      const miscTotal = miscKeys.reduce(
+        (sum, key) => sum + toNumber(baseData[key]),
+        0,
+      );
+
+      const afd = toNumber(scholarship.afd);
+      const hasAfdOverride = afd > 0;
+
+      const rfdDec = toDecimalPercent(scholarship.rfd ?? scholarship.rf);
+      const tfdDec = toDecimalPercent(scholarship.tfd);
+      const mfdDec = toDecimalPercent(scholarship.mfd);
+      const nfdDec = toDecimalPercent(scholarship.nfd);
+
+      let finalRegistrationFee = registrationFee;
+      let finalTuitionFee = tuitionFee;
+      let finalMiscTotal = miscTotal;
+      let finalNstpFee = nstpFee;
+
+      if (!hasAfdOverride) {
+        finalRegistrationFee = registrationFee - registrationFee * rfdDec;
+        finalTuitionFee = tuitionFee - tuitionFee * tfdDec;
+        finalMiscTotal = miscTotal - miscTotal * mfdDec;
+        finalNstpFee = nstpFee - nstpFee * nfdDec;
+      }
+
+      finalRegistrationFee = round2(finalRegistrationFee);
+      finalTuitionFee = round2(finalTuitionFee);
+      finalMiscTotal = round2(finalMiscTotal);
+      finalNstpFee = round2(finalNstpFee);
+
+      const miscScale = miscTotal > 0 ? finalMiscTotal / miscTotal : 0;
+      const scaledMiscEntries = miscKeys.map((key) => ({
+        key,
+        value: round2(toNumber(baseData[key]) * miscScale),
+      }));
+
+      if (scaledMiscEntries.length > 0) {
+        const scaledMiscSum = scaledMiscEntries.reduce((sum, item) => sum + item.value, 0);
+        const delta = round2(finalMiscTotal - scaledMiscSum);
+        scaledMiscEntries[scaledMiscEntries.length - 1].value = round2(
+          scaledMiscEntries[scaledMiscEntries.length - 1].value + delta,
+        );
+      }
+
+      const scaledMiscMap = scaledMiscEntries.reduce((acc, item) => {
+        acc[item.key] = item.value;
+        return acc;
+      }, {});
+
+      const totalTosf = round2(
+        finalTuitionFee + finalNstpFee + finalRegistrationFee + finalMiscTotal,
+      );
+
+      return {
+        payload: {
+          ...baseData,
+          ...scaledMiscMap,
+          tuition_fees: finalTuitionFee,
+          nstp_fees: finalNstpFee,
+          registration_fees: finalRegistrationFee,
+          total_tosf: totalTosf,
+          total_misc: finalMiscTotal,
+          scholarship_id: scholarship.id ? Number(scholarship.id) : null,
+        },
+        computed: {
+          scholarship_name: scholarship.scholarship_name || "",
+          rfd: scholarship.rfd ?? scholarship.rf ?? 0,
+          tfd: scholarship.tfd ?? 0,
+          mfd: scholarship.mfd ?? 0,
+          nfd: scholarship.nfd ?? 0,
+          afd: scholarship.afd ?? 0,
+          miscTotal,
+          finalMiscTotal,
+          finalRegistrationFee,
+          finalTuitionFee,
+          finalNstpFee,
+        },
+      };
+    };
+
     const handleSaveToUnifast = async () => {
       try {
         const res = await axios.post(`${API_BASE_URL}/save_to_unifast`, {
@@ -805,9 +927,23 @@ const CertificateOfRegistration = forwardRef(
 
     const handleSaveToMatriculation = async () => {
       try {
-        const res = await axios.post(`${API_BASE_URL}/save_to_matriculation`, {
+        if (!selectedScholarshipId) {
+          showSnackbar("Please select a scholarship type.", "error");
+          return false;
+        }
+        const scholarship = scholarshipTypes.find(
+          (item) => Number(item.id) === Number(selectedScholarshipId),
+        );
+        if (!scholarship) {
+          showSnackbar("Selected scholarship type not found.", "error");
+          return false;
+        }
+        const { payload } = applyScholarshipToMatriculationFees({
           ...requestedData,
           status: 1,
+        }, scholarship);
+        const res = await axios.post(`${API_BASE_URL}/save_to_matriculation`, {
+          ...payload,
         });
         if (res.data.success) {
           setSavedMatriculation(true);
@@ -815,12 +951,15 @@ const CertificateOfRegistration = forwardRef(
             "Student Payment was saved successfully in Matriculation",
             "success",
           );
+          return true;
         } else {
           showSnackbar(res.data.message || "Failed to save data", "error");
+          return false;
         }
       } catch (error) {
         console.error(error);
         showSnackbar("Server error while saving data", "error");
+        return false;
       }
     };
 
@@ -833,13 +972,26 @@ const CertificateOfRegistration = forwardRef(
       setConfirmOpen(false);
     };
 
+    const openScholarshipModal = () => {
+      setScholarshipModalOpen(true);
+    };
+
+    const closeScholarshipModal = () => {
+      setScholarshipModalOpen(false);
+    };
+
+    const handleConfirmScholarshipModal = async () => {
+      const saved = await handleSaveToMatriculation();
+      if (saved) {
+        setScholarshipModalOpen(false);
+      }
+    };
+
     const handleConfirmSave = async () => {
       const target = confirmTarget;
       setConfirmOpen(false);
       if (target === "unifast") {
         await handleSaveToUnifast();
-      } else if (target === "matriculation") {
-        await handleSaveToMatriculation();
       }
     };
 
@@ -916,7 +1068,7 @@ const CertificateOfRegistration = forwardRef(
 
           {/* SAVE TO MATRICULATION BUTTON */}
           <button
-            onClick={() => openConfirm("matriculation")}
+            onClick={openScholarshipModal}
             disabled={isAnySaved}
             style={{
               marginBottom: "1rem",
@@ -962,6 +1114,39 @@ const CertificateOfRegistration = forwardRef(
             </Button>
             <Button onClick={handleConfirmSave} variant="contained">
               Confirm
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={scholarshipModalOpen}
+          onClose={closeScholarshipModal}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>Select Scholarship Type</DialogTitle>
+          <DialogContent>
+            <TextField
+              select
+              fullWidth
+              label="Scholarship Type"
+              value={selectedScholarshipId}
+              onChange={(e) => setSelectedScholarshipId(e.target.value)}
+              sx={{ mt: 1 }}
+            >
+              {scholarshipTypes.map((item) => (
+                <MenuItem key={item.id} value={item.id}>
+                  {item.scholarship_name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closeScholarshipModal} color="inherit">
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmScholarshipModal} variant="contained">
+              Save to Matriculation
             </Button>
           </DialogActions>
         </Dialog>

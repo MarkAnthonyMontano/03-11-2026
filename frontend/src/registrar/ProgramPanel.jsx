@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { SettingsContext } from "../App";
 import axios from "axios";
 import {
@@ -15,6 +15,7 @@ import LoadingOverlay from "../components/LoadingOverlay";
 import API_BASE_URL from "../apiConfig";
 import { TextField } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
+import { FaFileExcel } from "react-icons/fa";
 import {
   Dialog,
   DialogTitle,
@@ -150,6 +151,8 @@ const ProgramPanel = () => {
     message: "",
     severity: "success",
   });
+  const importInputRef = useRef(null);
+  const [importingXlsx, setImportingXlsx] = useState(false);
 
   const fetchPrograms = async () => {
     try {
@@ -281,6 +284,45 @@ const ProgramPanel = () => {
     setSnackbar((prev) => ({ ...prev, open: false }));
   };
 
+  const handleProgramImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImportingXlsx(true);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await axios.post(`${API_BASE_URL}/import-program-xlsx`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (response.data?.success) {
+        setSnackbar({
+          open: true,
+          message: response.data.message || "Program import completed.",
+          severity: "success",
+        });
+        fetchPrograms();
+      } else {
+        setSnackbar({
+          open: true,
+          message: response.data?.error || "Program import failed.",
+          severity: "error",
+        });
+      }
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.error || "Program import failed.",
+        severity: "error",
+      });
+    } finally {
+      setImportingXlsx(false);
+      event.target.value = "";
+    }
+  };
+
 
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -398,26 +440,44 @@ const ProgramPanel = () => {
         >
           PROGRAM PANEL
         </Typography>
-        <TextField
-          variant="outlined"
-          placeholder="Search Program Description / Code / Major"
-          size="small"
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-          }}
-          sx={{
-            width: 450,
-            backgroundColor: "#fff",
-            borderRadius: 1,
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "10px",
-            },
-          }}
-          InputProps={{
-            startAdornment: <SearchIcon sx={{ mr: 1, color: "gray" }} />,
-          }}
-        />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <TextField
+            variant="outlined"
+            placeholder="Search Program Description / Code / Major"
+            size="small"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+            }}
+            sx={{
+              width: 450,
+              backgroundColor: "#fff",
+              borderRadius: 1,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "10px",
+              },
+            }}
+            InputProps={{
+              startAdornment: <SearchIcon sx={{ mr: 1, color: "gray" }} />,
+            }}
+          />
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleProgramImport}
+            style={{ display: "none" }}
+          />
+          <Button
+            variant="contained"
+            onClick={() => importInputRef.current?.click()}
+            disabled={importingXlsx}
+            sx={{ height: 40, textTransform: "none", fontWeight: "bold", minWidth: 170 }}
+          >
+            <FaFileExcel style={{ marginRight: 8 }} />
+            {importingXlsx ? "Importing..." : "Import Program"}
+          </Button>
+        </Box>
 
       </Box>
 

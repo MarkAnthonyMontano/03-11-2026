@@ -156,12 +156,12 @@ const TOSF = () => {
   const [scholarshipTypes, setScholarshipTypes] = useState([]);
   const [scholarshipForm, setScholarshipForm] = useState({
     scholarship_name: "",
-    scholarship_status: 1,
     rfd: "50",
     tfd: "50",
     mfd: "50",
     nfd: "50",
     afd: "0",
+    scholarship_status: 1,
   });
   const [editingScholarshipId, setEditingScholarshipId] = useState(null);
 
@@ -609,6 +609,7 @@ const TOSF = () => {
         <Typography
           variant="h4"
           sx={{
+
             fontWeight: "bold",
             color: titleColor,
             fontSize: "36px",
@@ -661,9 +662,7 @@ const TOSF = () => {
               </Box>
             ))}
           </Box>
-
-
-
+            
           <Box sx={{ mt: 2, textAlign: "right" }}>
             <Button
               type="submit"

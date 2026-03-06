@@ -222,6 +222,8 @@ import VerifyApplicantDocumentSchedule from "./registrar/VerifySchedule";
 import StudentScholarshipList from "./superadmin/StudentScholarshipList";
 import TOSFCrud from './superadmin/TOSFCrud';
 import Receipt from './superadmin/Receipt';
+import ReceiptCounterAssignment from "./superadmin/ReceiptCounterAssignment";
+import MatriculationPaymentModule from "./superadmin/MatriculationPaymentModule";
 
 // ✅ Create a Context so all components can access settings
 export const SettingsContext = createContext(null);
@@ -627,6 +629,8 @@ function App() {
                     <Route path="/student_admission_services" element={<ProtectedRoute allowedRoles={['student']} ><StudentAdmissionServices /></ProtectedRoute>} />
                     <Route path="/student_form_process" element={<ProtectedRoute allowedRoles={['student', 'registrar', 'applicant']}><StudentAdmissionFormProcess /></ProtectedRoute>} />
                     <Route path="/student_grade_file" element={<ProtectedRoute><StudentGradeFile /></ProtectedRoute>} />
+                    <Route path="/assign_receipt_counter" element={<ProtectedRoute><ReceiptCounterAssignment /></ProtectedRoute>} />  
+                    <Route path="/matriculation_payment" element={<ProtectedRoute><MatriculationPaymentModule /></ProtectedRoute>} />
 
                     {/*Public Examination Profile */}
                     <Route path="/applicant_profile" element={<ApplicantProfile />} />

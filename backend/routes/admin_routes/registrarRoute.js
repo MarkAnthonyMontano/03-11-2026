@@ -18,6 +18,23 @@ const ROLE_PAGE_ACCESS = {
   superadmin: "ALL"
 };
 
+router.get("/get_employee", async (req, res) => {
+  try{
+    const [rows] = await db3.query(`
+      SELECT id, employee_id, first_name, last_name, middle_name, email, role AS position, dprtmnt_id FROM user_accounts WHERE role != 'student';  
+    `)
+
+    if(rows.length === 0) {
+      res.status(400).json({message: "Theres no employee found in the record"});
+    }
+
+    res.json(rows);
+    console.log("Data: ", rows);
+  } catch (err) {
+    res.status(500).json({message: "Internal Server Error", err});
+  }
+})
+
 // POST CREATION ONLY
 router.post("/register_registrar", upload.single("profile_picture"), async (req, res) => {
   try {
@@ -251,4 +268,4 @@ router.put("/update_registrar/:id", upload.single("profile_picture"), async (req
   }
 });
 
-module.exports = router;
+module.exports = router;  

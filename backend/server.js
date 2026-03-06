@@ -38,8 +38,8 @@ const allowedOrigins = [
   'http://192.168.50.39:5173',
   'http://192.168.50.211:5173',
   'http://136.239.248.58:5173',
-  'http://192.168.0.108:5173',
-  'http://192.168.0.108:5173',
+  'http://192.168.50.100:5173',
+  'http://192.168.50.100:5173',
 ];
 
 app.use(
@@ -93,6 +93,8 @@ const QualifyingInterviewExam = require("./routes/admission_routes/QualifyingInt
 const medicalExamRoute = require("./routes/admission_routes/medicalExamRoute");
 const qrCodeForStudents = require("./routes/qrCodeForStudents");
 const studentPayment = require('./routes/payment/studentScholarship');
+const receiptCounter = require('./routes/payment/receiptCounter');
+const matriculationPayment = require('./routes/payment/matriculation');
 const programRoute = require("./routes/system_routes/programRoute");
 const applicantRoutes = require("./routes/reset_password_routes/applicantresetpasswordRoutes");
 const studentRoutes = require("./routes/reset_password_routes/studentresetpasswordRoutes");
@@ -121,6 +123,8 @@ app.use("/", verifyDocumentSchedule);
 app.use("/", QualifyingInterviewExam);
 app.use("/", medicalExamRoute);
 app.use("/", qrCodeForStudents);
+app.use("/", receiptCounter);
+app.use("/", matriculationPayment);
 app.use("/", studentPayment);
 app.use("/", importRoutes);
 app.use("/", applicantRoutes);
@@ -11003,7 +11007,9 @@ app.post("/save_to_matriculation", async (req, res) => {
     medical_and_dental_fees,
     registration_fees,
     school_id_fees,
+    total_misc,
     total_tosf,
+    scholarship_id,
     remark,
     matriculation_remark,
     active_school_year_id,
@@ -11018,8 +11024,8 @@ app.post("/save_to_matriculation", async (req, res) => {
         degree_program, year_level, sex, email_address, phone_number, laboratory_units, computer_units,
         academic_units_enrolled, academic_units_nstp_enrolled, tuition_fees, nstp_fees, athletic_fees, computer_fees,
         cultural_fees, development_fees, guidance_fees, laboratory_fees, library_fees,
-        medical_and_dental_fees, registration_fees, school_id_fees, total_tosf, remark, matriculation_remark, active_school_year_id, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        medical_and_dental_fees, registration_fees, school_id_fees, total_misc, total_tosf, scholarship_id, remark, matriculation_remark, active_school_year_id, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
@@ -11050,7 +11056,9 @@ app.post("/save_to_matriculation", async (req, res) => {
       medical_and_dental_fees,
       registration_fees,
       school_id_fees,
+      total_misc,
       total_tosf,
+      scholarship_id ?? null,
       remark,
       matriculation_remark || null,
       active_school_year_id,

@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { FaFileExcel } from "react-icons/fa";
 
 const CurriculumPanel = () => {
   const settings = useContext(SettingsContext);
@@ -68,6 +69,8 @@ const CurriculumPanel = () => {
     message: "",
     severity: "success",
   });
+  const importInputRef = useRef(null);
+  const [importingXlsx, setImportingXlsx] = useState(false);
 
   const [userID, setUserID] = useState("");
   const [user, setUser] = useState("");
@@ -308,6 +311,45 @@ const CurriculumPanel = () => {
     }
   };
 
+  const handleCurriculumImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImportingXlsx(true);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await axios.post(`${API_BASE_URL}/import-curriculum-xlsx`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (response.data?.success) {
+        setSnackbar({
+          open: true,
+          message: response.data.message || "Curriculum import completed.",
+          severity: "success",
+        });
+        fetchCurriculum();
+      } else {
+        setSnackbar({
+          open: true,
+          message: response.data?.error || "Curriculum import failed.",
+          severity: "error",
+        });
+      }
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.error || "Curriculum import failed.",
+        severity: "error",
+      });
+    } finally {
+      setImportingXlsx(false);
+      event.target.value = "";
+    }
+  };
+
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -450,26 +492,44 @@ const CurriculumPanel = () => {
           CURRICULUM PANEL
         </Typography>
 
-        <TextField
-          variant="outlined"
-          placeholder="Search Year / Program Code / Description / Major"
-          size="small"
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-          }}
-          sx={{
-            width: 460,
-            backgroundColor: "#fff",
-            borderRadius: 1,
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "10px",
-            },
-          }}
-          InputProps={{
-            startAdornment: <SearchIcon sx={{ mr: 1, color: "gray" }} />,
-          }}
-        />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <TextField
+            variant="outlined"
+            placeholder="Search Year / Program Code / Description / Major"
+            size="small"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+            }}
+            sx={{
+              width: 460,
+              backgroundColor: "#fff",
+              borderRadius: 1,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "10px",
+              },
+            }}
+            InputProps={{
+              startAdornment: <SearchIcon sx={{ mr: 1, color: "gray" }} />,
+            }}
+          />
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleCurriculumImport}
+            style={{ display: "none" }}
+          />
+          <Button
+            variant="contained"
+            onClick={() => importInputRef.current?.click()}
+            disabled={importingXlsx}
+            sx={{ height: 40, textTransform: "none", fontWeight: "bold", minWidth: 185 }}
+          >
+            <FaFileExcel style={{ marginRight: 8 }} />
+            {importingXlsx ? "Importing..." : "Import Curriculum"}
+          </Button>
+        </Box>
       </Box>
 
       <hr style={{ border: "1px solid #ccc", width: "100%" }} />

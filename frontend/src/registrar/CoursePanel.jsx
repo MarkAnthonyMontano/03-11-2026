@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { SettingsContext } from "../App";
 import axios from "axios";
 import {
@@ -37,6 +37,7 @@ import API_BASE_URL from "../apiConfig";
 import SearchIcon from "@mui/icons-material/Search";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { FaFileExcel } from "react-icons/fa";
 
 const CoursePanel = () => {
   const settings = useContext(SettingsContext);
@@ -104,6 +105,8 @@ const CoursePanel = () => {
   };
 
   const [feeRules, setFeeRules] = useState([]);
+  const importInputRef = useRef(null);
+  const [importingXlsx, setImportingXlsx] = useState(false);
 
 
   const fetchFeeRules = async () => {
@@ -384,6 +387,33 @@ const CoursePanel = () => {
     setSnack((prev) => ({ ...prev, open: false }));
   };
 
+  const handleCourseImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImportingXlsx(true);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await axios.post(`${API_BASE_URL}/import-course-xlsx`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (response.data?.success) {
+        showSnack(response.data.message || "Course import completed.", "success");
+        fetchCourses();
+      } else {
+        showSnack(response.data?.error || "Course import failed.", "error");
+      }
+    } catch (error) {
+      showSnack(error.response?.data?.error || "Course import failed.", "error");
+    } finally {
+      setImportingXlsx(false);
+      event.target.value = "";
+    }
+  };
+
   const attachedFees = feeRules.filter(
     fee => Number(fee.applies_to_all) === 1
   );
@@ -458,25 +488,43 @@ const CoursePanel = () => {
           COURSE PANEL
         </Typography>
 
-        <TextField
-          variant="outlined"
-          placeholder="Search Year / Program Code / Description / Major"
-          size="small"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          sx={{
-            width: 450,
-            backgroundColor: "#fff",
-            borderRadius: 1,
-            mb: 2,
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "10px",
-            },
-          }}
-          InputProps={{
-            startAdornment: <SearchIcon sx={{ mr: 1, color: "gray" }} />,
-          }}
-        />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <TextField
+            variant="outlined"
+            placeholder="Search Year / Program Code / Description / Major"
+            size="small"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            sx={{
+              width: 450,
+              backgroundColor: "#fff",
+              borderRadius: 1,
+              mb: 2,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "10px",
+              },
+            }}
+            InputProps={{
+              startAdornment: <SearchIcon sx={{ mr: 1, color: "gray" }} />,
+            }}
+          />
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleCourseImport}
+            style={{ display: "none" }}
+          />
+          <Button
+            variant="contained"
+            onClick={() => importInputRef.current?.click()}
+            disabled={importingXlsx}
+            sx={{ height: 40, mb: 2, textTransform: "none", fontWeight: "bold", minWidth: 165 }}
+          >
+            <FaFileExcel style={{ marginRight: 8 }} />
+            {importingXlsx ? "Importing..." : "Import Course"}
+          </Button>
+        </Box>
       </Box>
 
       <hr style={{ border: "1px solid #ccc", width: "100%" }} />
