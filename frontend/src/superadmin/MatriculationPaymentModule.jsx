@@ -915,89 +915,151 @@ const MatriculationPaymentModule = () => {
             </TableContainer >
 
              {/* CONFIRM DIALOG */ }
-            <Dialog open={confirmOpen} onClose={closeConfirm} fullWidth maxWidth="md">
+            <Dialog open={confirmOpen} onClose={closeConfirm} fullWidth maxWidth="lg">
                 <DialogTitle>Confirm Payment</DialogTitle>
                 <DialogContent>
                     <DialogContentText>
                         Are you sure you want to save the payment to Matriculation for student{" "}
                         {confirmRow?.student_number || ""}?
                     </DialogContentText>
-                    <DialogContentText sx={{mt: "20px"}}>
-                        Please Enter the total amount
-                    </DialogContentText>
-                    <TextField
-                        fullWidth
-                        size="small"
-                        type="number"
-                        label="Payment"
-                        value={paymentValue}
-                        onChange={(e) => setPaymentValue(e.target.value)}
-                        sx={{ mt: 2 }}
-                        error={isOverPayment}
-                        helperText={
-                            isOverPayment
-                                ? `Payment exceeds Total Amount to pay (${toAmount(confirmPaymentSummary?.totalTosf).toLocaleString()}).`
-                                : ""
-                        }
-                    />
-                    <Box sx={{ mt: 2, p: 1, border: "1px solid #d9d9d9", borderRadius: 1 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
-                            Payment Summary Graph
-                        </Typography>
-                        <Box sx={{ height: 220, width: "100%" }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={confirmPaymentChartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-                                    <CartesianGrid stroke="#666666" strokeOpacity={0.7} strokeWidth={1.2} strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
-                                    <YAxis />
-                                    <Tooltip formatter={(value) => Number(value).toLocaleString()} />
-                                    <Bar dataKey="amount" radius={[6, 6, 0, 0]} fillOpacity={0.3}>
-                                        {confirmPaymentChartData.map((entry) => (
-                                            <Cell key={entry.name} fill={entry.color} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                    <DialogContentText sx={{mt: "20px", display: "flex", alignItems: "center", gap: "1rem"}}>
+                        <Box sx={{mt: 1}}>
+                            <Box>
+                                <Box sx={{mb: 1, display: "flex", gap: 1}}>
+                                    <Box sx={{width: "200px", height: "180px", background: "#6a0181", fontWeight: "700", padding: 2, color: "White", borderRadius: "10px"}}>
+                                        <Typography>
+                                            TOTAL:
+                                        </Typography>
+                                        <Box sx={{width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "34px", marginTop: "-10px"}}>
+                                            ₱{" "}{toAmount(confirmPaymentSummary?.totalTosf).toLocaleString()}
+                                        </Box>
+                                    </Box>
+                                    <Box sx={{width: "200px", height: "180px", background: "#094e9e", fontWeight: "700", padding: 2, color: "White", borderRadius: "10px"}}>
+                                        <Typography>
+                                            BALANCE:
+                                        </Typography>
+                                        <Box sx={{width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "34px", marginTop: "-10px"}}>
+                                            ₱{" "}{toAmount(confirmPaymentSummary?.balance).toLocaleString()}
+                                        </Box>
+                                    </Box>
+                                </Box>
+                                <Box sx={{mb: 1, display: "flex", gap: 1}}>
+                                    <Box sx={{width: "410px", height: "180px", background: "#109917", fontWeight: "700", padding: 2, color: "White", borderRadius: "10px"}}>
+                                        <Typography>
+                                            STUDENT'S PAYMENT:
+                                        </Typography>
+                                        <Box sx={{width: "100%", height: "100%", display: "flex", alignItems: "center", padding: "0px 20px", fontSize: "34px", marginTop: "-10px"}}>
+                                            ₱{" "}{toAmount(confirmPaymentSummary?.totalPayment).toLocaleString()}
+                                        </Box>
+                                    </Box>
+                                </Box>
+                            </Box>
+                            <TextField
+                                size="small"
+                                type="number"
+                                label="Total Fee"
+                                readOnly
+                                disabled
+                                value={confirmPaymentSummary?.totalTosf || 0}
+                                sx={{ 
+                                    mt: 2, 
+                                    width: "406px",
+                                    "& .MuiInputBase-input": { fontSize: "20px" },
+                                }}
+                            /><br />
+                            <TextField
+                                size="small"
+                                type="number"
+                                label="Payment"
+                                value={paymentValue}
+                                onChange={(e) => setPaymentValue(e.target.value)}
+                                sx={{ 
+                                    mt: 2, 
+                                    width: "406px",
+                                    "& .MuiInputBase-input": { fontSize: "20px" },
+                                }}
+                                error={isOverPayment}
+                                helperText={
+                                    isOverPayment
+                                        ? `Payment exceeds Total Amount to pay (${toAmount(confirmPaymentSummary?.totalTosf).toLocaleString()}).`
+                                        : ""
+                                }
+                            /><br />
+                            <TextField
+                                fullWidth
+                                size="small"
+                                type="number"
+                                disabled
+                                label="Balance after Payment"
+                                value={confirmPaymentSummary?.balance}
+                                readOnly
+                                sx={{ 
+                                    mt: 2, 
+                                    width: "406px",
+                                    "& .MuiInputBase-input": { fontSize: "20px" },
+                                }}
+                            />
+                            <Box sx={{ mt: 2, width: "406px", display: "flex", alignItems: "center", justifyContent: "end"}}>
+                                <Button onClick={closeConfirm} color="inherit">
+                                    Cancel
+                                </Button>
+                                <Button onClick={handleConfirmTransfer} variant="contained" sx={{background: "maroon"}} disabled={isOverPayment}>
+                                    Confirm
+                                </Button>
+                            </Box>
                         </Box>
-                    </Box>
-                    <Box sx={{ mt: 2, p: 1, border: "1px solid #d9d9d9", borderRadius: 1 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
-                            Fee Breakdown in Privilege Order{" "}
-                            {`(Total Amount: ${toAmount(confirmPaymentSummary?.totalTosf).toLocaleString()} | Student Payment: ${toAmount(confirmPaymentSummary?.totalPayment).toLocaleString()} | Total Balance: ${toAmount(confirmPaymentSummary?.balance).toLocaleString()})`}
-                        </Typography>
-                        <Typography variant="caption" sx={{ display: "block", mb: 1 }}>
-                            Payment is applied in order from fee 0, then fee 1, and so on.
-                        </Typography>
-                        <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 260 }}>
-                            <Table stickyHeader size="small">
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Priority</TableCell>
-                                        <TableCell>Fee</TableCell>
-                                        <TableCell align="right">Fee Amount</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {(confirmPaymentSummary?.deductions || []).map((item) => (
-                                        <TableRow key={item.key}>
-                                            <TableCell>{item.priority}</TableCell>
-                                            <TableCell>{item.label}</TableCell>
-                                            <TableCell align="right">{toAmount(item.fee_amount).toLocaleString()}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    </Box>
+                        <Box>
+                            <Box sx={{ mt: 2, p: 1, border: "1px solid #d9d9d9", borderRadius: 1}}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1, width: "700px" }}>
+                                    Payment Summary Graph
+                                </Typography>
+                                <Box sx={{ height: 220, width: "100%" }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={confirmPaymentChartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                                            <CartesianGrid stroke="#666666" strokeOpacity={0.7} strokeWidth={1.2} strokeDasharray="3 3" />
+                                            <XAxis dataKey="name" />
+                                            <YAxis />
+                                            <Tooltip formatter={(value) => Number(value).toLocaleString()} />
+                                            <Bar dataKey="amount" radius={[6, 6, 0, 0]} fillOpacity={0.3}>
+                                                {confirmPaymentChartData.map((entry) => (
+                                                    <Cell key={entry.name} fill={entry.color} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </Box>
+                            </Box>
+                            <Box sx={{ mt: 2, p: 1, border: "1px solid #d9d9d9", borderRadius: 1}}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
+                                    Fee Breakdown in Privilege Order{" "}
+                                </Typography>
+                                <Typography variant="caption" sx={{ display: "block", mb: 1 }}>
+                                    Payment is applied in order from fee 0, then fee 1, and so on.
+                                </Typography>
+                                <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 260 }}>
+                                    <Table stickyHeader size="small">
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>Priority</TableCell>
+                                                <TableCell>Fee</TableCell>
+                                                <TableCell align="right">Fee Amount</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {(confirmPaymentSummary?.deductions || []).map((item) => (
+                                                <TableRow key={item.key}>
+                                                    <TableCell>{item.priority}</TableCell>
+                                                    <TableCell>{item.label}</TableCell>
+                                                    <TableCell align="right">{toAmount(item.fee_amount).toLocaleString()}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </Box>
+                        </Box>
+                    </DialogContentText>
                 </DialogContent>
-                <DialogActions> 
-                <Button onClick={closeConfirm} color="inherit">
-                    Cancel
-                </Button>
-                <Button onClick={handleConfirmTransfer} variant="contained" disabled={isOverPayment}>
-                    Confirm
-                </Button>
-                </DialogActions>
             </Dialog>
 
             <Dialog open={historyOpen} onClose={() => setHistoryOpen(false)} fullWidth maxWidth="lg">

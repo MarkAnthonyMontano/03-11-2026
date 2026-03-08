@@ -285,9 +285,6 @@ const OfficeOfTheRegistrar = () => {
         fetchCurriculums();
     }, []);
 
-    console.log("person.program:", person.program);
-    console.log("curriculumOptions:", curriculumOptions);
-
     {
         curriculumOptions.find(
             (item) =>
@@ -3337,3 +3334,5 @@ const OfficeOfTheRegistrar = () => {
 };
 
 export default OfficeOfTheRegistrar;
+
+

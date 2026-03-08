@@ -233,13 +233,12 @@ const CertificateOfRegistration = forwardRef(
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const queryPersonId = queryParams.get("person_id");
-
+    
     // do not alter
     useEffect(() => {
       const storedUser = localStorage.getItem("email");
       const storedRole = localStorage.getItem("role");
       const loggedInPersonId = localStorage.getItem("person_id");
-      const searchedPersonId = sessionStorage.getItem("admin_edit_person_id");
 
       if (!storedUser || !storedRole || !loggedInPersonId) {
         window.location.href = "/login";
@@ -252,7 +251,7 @@ const CertificateOfRegistration = forwardRef(
       // Allow Applicant, Admin, SuperAdmin to view ECAT
       const allowedRoles = ["registrar", "applicant", "student"];
       if (allowedRoles.includes(storedRole)) {
-        const targetId = searchedPersonId || queryPersonId || loggedInPersonId;
+        const targetId = queryPersonId || loggedInPersonId;
         setUserID(targetId);
         fetchPersonData(targetId);
         return;
@@ -612,9 +611,6 @@ const CertificateOfRegistration = forwardRef(
 
       fetchCurriculums();
     }, []);
-
-    console.log("person.program:", person.program);
-    console.log("curriculumOptions:", curriculumOptions);
 
     {
       curriculumOptions.find(
@@ -4269,3 +4265,5 @@ const CertificateOfRegistration = forwardRef(
 );
 
 export default CertificateOfRegistration;
+
+

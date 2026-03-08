@@ -292,9 +292,6 @@ const StudentPersonalDataForm = () => {
         fetchCurriculums();
     }, []);
 
-    console.log("person.program:", person.program);
-    console.log("curriculumOptions:", curriculumOptions);
-
     {
         curriculumOptions.find(
             (item) =>
@@ -2348,3 +2345,5 @@ const StudentPersonalDataForm = () => {
 };
 
 export default StudentPersonalDataForm;
+
+

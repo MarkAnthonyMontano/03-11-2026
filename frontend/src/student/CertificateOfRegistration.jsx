@@ -456,9 +456,6 @@ const CertificateOfRegistration = forwardRef(({ student_number }, divToPrintRef)
     fetchCurriculums();
   }, []);
 
-  console.log("person.program:", person.program);
-  console.log("curriculumOptions:", curriculumOptions);
-
   {
     curriculumOptions.find(
       (item) =>
@@ -3208,3 +3205,5 @@ const CertificateOfRegistration = forwardRef(({ student_number }, divToPrintRef)
 });
 
 export default CertificateOfRegistration;
+
+

@@ -47,6 +47,7 @@ const ClassRoster = () => {
   const [companyName, setCompanyName] = useState("");
   const [shortTerm, setShortTerm] = useState("");
   const [campusAddress, setCampusAddress] = useState("");
+  const [branches, setBranches] = useState([]);
 
   useEffect(() => {
     if (!settings) return;
@@ -70,6 +71,18 @@ const ClassRoster = () => {
     if (settings.company_name) setCompanyName(settings.company_name);
     if (settings.short_term) setShortTerm(settings.short_term);
     if (settings.campus_address) setCampusAddress(settings.campus_address);
+    if (settings?.branches) {
+      try {
+        const parsed =
+          typeof settings.branches === "string"
+            ? JSON.parse(settings.branches)
+            : settings.branches;
+        setBranches(parsed);
+      } catch (err) {
+        console.error("Failed to parse branches:", err);
+        setBranches([]);
+      }
+    }
 
   }, [settings]);
 
@@ -91,7 +104,7 @@ const ClassRoster = () => {
   const [selectedProgramFilter, setSelectedProgramFilter] = useState("");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("Regular");
   const [selectedRemarkFilter, setSelectedRemarkFilter] = useState("Ongoing");
-  const [selectedCampus, setSelectedCampus] = useState("0");
+  const [selectedCampus, setSelectedCampus] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const divToPrintRef = useRef();
@@ -321,10 +334,9 @@ const ClassRoster = () => {
         selectedProgramFilter === "" ||
         s.program_id === selectedProgramFilter;
 
-      const schoolYear = schoolYears.find((sy) => sy.year_id === selectedSchoolYear);
       const matchesSchoolYear =
         selectedSchoolYear === "" ||
-        (schoolYear && String(s.created_at?.split("-")[0]) === String(schoolYear.current_year));
+        String(s.year_id) === String(selectedSchoolYear);
 
       const matchesSemester =
         selectedSchoolSemester === "" ||
@@ -867,9 +879,12 @@ const ClassRoster = () => {
                   value={selectedCampus}
                   onChange={(e) => setSelectedCampus(e.target.value)}
                 >
-                  <MenuItem value=""><em>All Campuses</em></MenuItem>
-                  <MenuItem value="0">MANILA</MenuItem>
-                  <MenuItem value="1">CAVITE</MenuItem>
+                  <MenuItem value=""><em>All Branches</em></MenuItem>
+                  {branches.map((branch) => (
+                    <MenuItem key={branch.id ?? branch.branch} value={branch.id ?? ""}>
+                      {branch.branch}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Box>
@@ -1037,6 +1052,21 @@ const ClassRoster = () => {
                 <TableCell sx={{ textAlign: "center", border: `2px solid ${borderColor}` }}>{s.status === 1 ? "Regular" : "Irregular"}</TableCell>
               </TableRow>
             ))}
+            {paginatedStudents.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={10}
+                  sx={{
+                    textAlign: "center",
+                    border: `2px solid ${borderColor}`,
+                    color: "#777",
+                    py: 3,
+                  }}
+                >
+                  No students found for the selected filters.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>

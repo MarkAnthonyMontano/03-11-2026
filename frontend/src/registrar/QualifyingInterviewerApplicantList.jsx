@@ -255,7 +255,6 @@ const InterviewerApplicantList = () => {
     const fetchCurriculums = async () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/api/applied_program`);
-        console.log("✅ curriculumOptions:", response.data); // <--- add this
         setCurriculumOptions(response.data);
       } catch (error) {
         console.error("Error fetching curriculum options:", error);
@@ -813,3 +812,4 @@ const InterviewerApplicantList = () => {
 };
 
 export default InterviewerApplicantList;
+

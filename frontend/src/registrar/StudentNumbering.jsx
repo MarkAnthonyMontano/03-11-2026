@@ -374,9 +374,6 @@ const StudentNumbering = () => {
             });
     }, []);
 
-    console.log("person.program:", person.program);
-    console.log("curriculumOptions:", curriculumOptions);
-
     {
         curriculumOptions.find(
             (item) =>
@@ -1281,3 +1278,5 @@ const StudentNumbering = () => {
 };
 
 export default StudentNumbering;
+
+

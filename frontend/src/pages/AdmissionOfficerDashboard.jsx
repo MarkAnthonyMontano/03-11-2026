@@ -196,7 +196,6 @@ const AdmissionOfficerDashboard = ({ profileImage, setProfileImage }) => {
     const fetchCurriculums = async () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/api/applied_program/${adminData.dprtmnt_id}`);
-        console.log("✅ curriculumOptions:", response.data);
         setCurriculumOptions(response.data);
       } catch (error) {
         console.error("Error fetching curriculum options:", error);
@@ -1445,3 +1444,4 @@ const AdmissionOfficerDashboard = ({ profileImage, setProfileImage }) => {
 };
 
 export default AdmissionOfficerDashboard;
+

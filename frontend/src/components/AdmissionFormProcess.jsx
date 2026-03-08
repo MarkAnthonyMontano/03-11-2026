@@ -330,9 +330,6 @@ const AdmissionFormProcess = () => {
     fetchCurriculums();
   }, []);
 
-  console.log("person.program:", person.program);
-  console.log("curriculumOptions:", curriculumOptions);
-
   {
     curriculumOptions.find(
       (item) =>
@@ -1955,3 +1952,5 @@ const AdmissionFormProcess = () => {
 };
 
 export default AdmissionFormProcess;
+
+

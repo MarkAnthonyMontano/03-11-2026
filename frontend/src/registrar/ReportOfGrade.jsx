@@ -12,6 +12,7 @@ import ClassIcon from "@mui/icons-material/Class";
 import SearchIcon from "@mui/icons-material/Search";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import GradeIcon from "@mui/icons-material/Grade";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
 import SchoolIcon from "@mui/icons-material/School";
 import { useNavigate } from "react-router-dom";
 import { FcPrint } from "react-icons/fc";
@@ -526,6 +527,7 @@ const ReportOfGrade = () => {
                     justifyContent: "space-between",
                     alignItems: "center",
                     width: "100%",
+                    mt: 2,
                 }}
             >
                 {tabs1.map((tab, index) => (
@@ -551,7 +553,7 @@ const ReportOfGrade = () => {
                                         : "0px 2px 6px rgba(0,0,0,0.15)",
                                 transition: "0.3s ease",
                                 "&:hover": {
-                                    backgroundColor: activeStep === index ? "#000" : "#f5d98f",
+                                    backgroundColor: activeStep === index ? "#000000" : "#f5d98f",
                                 },
                             }}
                         >

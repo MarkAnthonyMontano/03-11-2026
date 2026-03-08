@@ -33,6 +33,7 @@ import ClassIcon from "@mui/icons-material/Class";
 import SearchIcon from "@mui/icons-material/Search";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import GradeIcon from "@mui/icons-material/Grade";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
@@ -1259,78 +1260,6 @@ const ReadmissionDashboard1 = () => {
       {searchError && <Typography color="error">{searchError}</Typography>}
       <hr style={{ border: "1px solid #ccc", width: "100%" }} />
       <br />
-      <br />
-
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          flexWrap: "nowrap", // prevent wrapping
-          width: "100%",
-          mt: 3,
-
-        }}
-      >
-        {stepsData.map((step, index) => (
-          <React.Fragment key={index}>
-            {/* Step Card */}
-            <Card
-              onClick={() => handleNavigateStep(index, step.to)}
-              sx={{
-                flex: `1 1 ${100 / stepsData.length}%`, // evenly divide width
-                height: 120,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                borderRadius: 2,
-                border: `2px solid ${borderColor}`,
-                backgroundColor: currentStep === index ? settings?.header_color || "#1976d2" : "#E8C999",
-                color: currentStep === index ? "#fff" : "#000",
-                boxShadow:
-                  currentStep === index
-                    ? "0px 4px 10px rgba(0,0,0,0.3)"
-                    : "0px 2px 6px rgba(0,0,0,0.15)",
-                transition: "0.3s ease",
-                "&:hover": {
-                  backgroundColor: currentStep === index ? "#000" : "#f5d98f",
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                }}
-              >
-                <Box sx={{ fontSize: 40, mb: 1 }}>{step.icon}</Box>
-                <Typography
-                  sx={{
-                    fontSize: 14,
-                    fontWeight: "bold",
-                    textAlign: "center",
-                  }}
-                >
-                  {step.label}
-                </Typography>
-              </Box>
-            </Card>
-
-            {/* Spacer (line gap between steps) */}
-            {index < stepsData.length - 1 && (
-              <Box
-                sx={{
-                  flex: 0.05,
-                  mx: 1, // spacing between cards
-                }}
-              />
-            )}
-          </React.Fragment>
-        ))}
-      </Box>
-
-      <br />
       <TableContainer component={Paper} sx={{ width: '100%', mb: 1 }}>
         <Table>
           <TableHead sx={{ backgroundColor: settings?.header_color || "#1976d2", border: `2px solid ${borderColor}`, }}>
@@ -1358,9 +1287,78 @@ const ReadmissionDashboard1 = () => {
           </TableHead>
         </Table>
       </TableContainer>
+      <br />
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "nowrap", // prevent wrapping
+          width: "100%",
+          mt: 2,
 
+        }}
+      >
+        {stepsData.map((step, index) => (
+          <React.Fragment key={index}>
+            {/* Step Card */}
+            <Card
+              onClick={() => handleNavigateStep(index, step.to)}
+              sx={{
+                flex: 1,
+                maxWidth: `${100 / stepsData.length}%`,
+                height: 140,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                borderRadius: 2,
+                border: `2px solid ${borderColor}`,
+                backgroundColor: currentStep === index ? settings?.header_color || "#1976d2" : "#E8C999",
+                color: currentStep === index ? "#fff" : "#000",
+                boxShadow:
+                  currentStep === index
+                    ? "0px 4px 10px rgba(0,0,0,0.3)"
+                    : "0px 2px 6px rgba(0,0,0,0.15)",
+                transition: "0.3s ease",
+                "&:hover": {
+                  backgroundColor: currentStep === index ? "#000000" : "#f5d98f",
+                },
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                }}
+              >
+                <Box sx={{ fontSize: 32, mb: 0.5 }}>{step.icon}</Box>
+                <Typography
+                  sx={{
+                    fontSize: 14,
+                    fontWeight: "bold",
+                    textAlign: "center",
+                  }}
+                >
+                  {step.label}
+                </Typography>
+              </Box>
+            </Card>
 
-
+            {/* Spacer (line gap between steps) */}
+            {index < stepsData.length - 1 && (
+              <Box
+                sx={{
+                  flex: 0.1,
+                  mx: 1, // spacing between cards
+                }}
+              />
+            )}
+          </React.Fragment>
+        ))}
+      </Box>
+      <br />
       <Box
         sx={{
           display: "flex",

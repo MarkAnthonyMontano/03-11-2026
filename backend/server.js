@@ -35,11 +35,11 @@ app.use("/assets", express.static(path.join(__dirname, "assets")));
 const allowedOrigins = [
   'http://localhost:5173',
   'http://192.168.50.77:5173',
-  'http://192.168.50.39:5173',
+  'http://192.168.0.108:5173',
   'http://192.168.50.211:5173',
   'http://136.239.248.58:5173',
-  'http://192.168.50.39:5173',
-  'http://192.168.50.39:5173',
+  'http://192.168.0.108:5173',
+  'http://192.168.0.108:5173',
 ];
 
 app.use(
@@ -3067,12 +3067,14 @@ app.get("/api/all-students", async (req, res) => {
       LEFT JOIN active_school_year_table AS sy ON es.active_school_year_id = sy.id
       LEFT JOIN year_table AS yt ON sy.year_id = yt.year_id
       LEFT JOIN semester_table AS smt ON sy.semester_id = smt.semester_id
-      LEFT JOIN student_status_table AS sst ON snt.student_number = sst.student_number
-      LEFT JOIN year_level_table AS ylt ON sst.year_level_id = ylt.year_level_id
+      LEFT JOIN program_tagging_table AS ptt ON es.curriculum_id = ptt.curriculum_id
+     		AND es.course_id = ptt.course_id AND sy.semester_id = ptt.semester_id
+      LEFT JOIN year_level_table AS ylt ON ptt.year_level_id = ylt.year_level_id
       LEFT JOIN dprtmnt_curriculum_table AS dct ON cct.curriculum_id = dct.dprtmnt_curriculum_id
       LEFT JOIN dprtmnt_table AS dt ON dct.dprtmnt_id = dt.dprtmnt_id;`);
 
     res.json(rows);
+    console.log("student list:", rows);
   } catch (err) {
     console.error("❌ Error fetching all students:", err);
     res.status(500).json({ error: "Server error" });
@@ -9795,6 +9797,203 @@ app.post("/student-tagging", async (req, res) => {
   }
 });
 
+app.post("/student-tagging/dprtmnt", async (req, res) => {
+  const { studentNumber, dprtmntId } = req.body;
+  
+  if (!studentNumber || !dprtmntId) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
+  try {
+    const sql = `
+      SELECT DISTINCT
+        IFNULL(ss.id, "") AS student_status_id ,
+        sn.student_number,
+        ptbl.person_id,
+        ptbl.first_name,
+        ptbl.last_name,
+        ptbl.middle_name,
+        ptbl.age,
+        ptbl.gender,
+        ptbl.emailAddress,
+        ptbl.program,
+        ptbl.profile_img,
+        ptbl.extension,
+        ss.active_curriculum,
+        pt.program_id,
+        pt.major,
+        pt.program_description,
+        pt.program_code,
+        yt.year_id,
+        yt.year_description,
+        es.status AS enrolled_status,
+        es.department_section_id,
+        st.description AS section_description,
+        dt.dprtmnt_name,
+        ylt.year_level_id,
+        ylt.year_level_description,
+        ss.active_school_year_id,
+        sy.semester_id
+    FROM student_numbering_table AS sn
+    LEFT JOIN student_status_table AS ss ON sn.student_number = ss.student_number
+    LEFT JOIN person_table AS ptbl ON sn.person_id = ptbl.person_id
+    LEFT JOIN curriculum_table AS c ON ss.active_curriculum = c.curriculum_id
+    LEFT JOIN program_table AS pt ON c.program_id = pt.program_id
+    LEFT JOIN year_table AS yt ON c.year_id = yt.year_id
+    LEFT JOIN enrolled_subject AS es ON ss.student_number = es.student_number
+    LEFT JOIN dprtmnt_section_table AS dst ON es.department_section_id = dst.id
+    LEFT JOIN section_table AS st ON dst.section_id = st.id
+    LEFT JOIN dprtmnt_curriculum_table AS dct ON c.curriculum_id = dct.curriculum_id
+    LEFT JOIN dprtmnt_table AS dt ON dct.dprtmnt_id = dt.dprtmnt_id
+    LEFT JOIN year_level_table AS ylt ON ss.year_level_id = ylt.year_level_id
+    LEFT JOIN active_school_year_table AS sy ON ss.active_school_year_id = sy.id
+    WHERE sn.student_number = ? AND dt.dprtmnt_id = ? AND (
+        ss.active_school_year_id = 0
+        OR sy.astatus = 1
+      );
+    `;
+
+    const [results] = await db3.query(sql, [studentNumber, dprtmntId]);
+
+    if (results.length === 0) {
+      return res.status(400).json({ message: "Invalid Student Number" });
+    }
+
+    const student = results[0];
+
+    const feeSql = `
+      SELECT
+        COALESCE(SUM(lec_fee), 0) AS total_lec_fee,
+        COALESCE(SUM(lab_fee), 0) AS total_lab_fee,
+        COALESCE(SUM(total_nstp), 0) AS total_nstp,
+        COALESCE(SUM(total_computer_lab), 0) AS total_computer_lab,
+        COALESCE(SUM(total_laboratory), 0) AS total_laboratory
+      FROM (
+        SELECT
+          course_id,
+          MAX(lec_fee) AS lec_fee,
+          MAX(lab_fee) AS lab_fee,
+          MAX(is_nstp = 1) AS total_nstp,
+          MAX(iscomputer_lab = 1) AS total_computer_lab,
+          MAX(islaboratory_fee = 1) AS total_laboratory
+        FROM program_tagging_table
+        WHERE curriculum_id = ?
+          AND year_level_id = ?
+          AND semester_id = ?
+        GROUP BY course_id
+      ) fees;
+
+    `;
+
+    const [feeResult] = await db3.query(feeSql, [
+      student.active_curriculum,
+      student.year_level_id,
+      student.semester_id,
+    ]);
+
+    const totalLecFee = Number(feeResult[0]?.total_lec_fee || 0);
+    const totalLabFee = Number(feeResult[0]?.total_lab_fee || 0);
+    const totalFees = totalLecFee + totalLabFee;
+    const totalNstpCount = Number(feeResult[0]?.total_nstp || 0);
+    const totalComputerLab = Number(feeResult[0]?.total_computer_lab || 0);
+    const totalLaboratory = Number(feeResult[0]?.total_laboratory || 0);
+    const isEnrolled = student.enrolled_status === 1;
+
+    const effectiveProgram =
+      student.active_curriculum && student.active_curriculum !== 0
+        ? student.active_curriculum
+        : student.program;
+
+    const token2 = webtoken.sign(
+      {
+        id: student.student_status_id,
+        person_id2: student.person_id,
+        studentNumber: student.student_number,
+        section: student.section_description,
+        activeCurriculum: effectiveProgram,
+        major: student.major,
+        yearLevel: student.year_level_id,
+        yearLevelDescription: student.year_level_description,
+        courseCode: student.program_code,
+        courseDescription: student.program_description,
+        departmentName: student.dprtmnt_name,
+        yearDesc: student.year_description,
+        firstName: student.first_name,
+        middleName: student.middle_name,
+        lastName: student.last_name,
+        age: student.age,
+        gender: student.gender,
+        email: student.emailAddress,
+        program: student.program,
+        profile_img: student.profile_img,
+        extension: student.extension,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" },
+    );
+
+    console.log("Search response:", {
+      token2,
+      totalNstpCount,
+      studentNumber: student.student_number,
+      person_id2: student.person_id,
+      activeCurriculum: student.active_curriculum,
+      section: student.section_description,
+      major: student.major,
+      yearLevel: student.year_level_id,
+      yearLevelDescription: student.year_level_description,
+      courseCode: student.program_code,
+      courseDescription: student.program_description,
+      departmentName: student.dprtmnt_name,
+      yearDesc: student.year_description,
+      firstName: student.first_name,
+      middleName: student.middle_name,
+      lastName: student.last_name,
+      age: student.age,
+      gender: student.gender,
+      email: student.emailAddress,
+      program: student.program,
+      profile_img: student.profile_img,
+      extension: student.extension,
+    });
+
+    res.json({
+      message: "Search successful",
+      token2,
+      isEnrolled,
+      totalLecFee,
+      totalLabFee,
+      totalFees,
+      totalComputerLab,
+      totalLaboratory,
+      totalNstpCount,
+      studentNumber: student.student_number,
+      person_id2: student.person_id,
+      section: student.section_description,
+      activeCurriculum: effectiveProgram,
+      major: student.major,
+      yearLevel: student.year_level_id,
+      yearLevelDescription: student.year_level_description,
+      courseCode: student.program_code,
+      courseDescription: student.program_description,
+      departmentName: student.dprtmnt_name,
+      yearDesc: student.year_description,
+      firstName: student.first_name,
+      middleName: student.middle_name,
+      lastName: student.last_name,
+      age: student.age,
+      gender: student.gender,
+      email: student.emailAddress,
+      program: student.program,
+      profile_img: student.profile_img,
+      extension: student.extension,
+    });
+  } catch (err) {
+    console.error("SQL error:", err);
+    return res.status(500).json({ message: "Database error" });
+  }
+});
+
 app.post("/student-tagging-batch", async (req, res) => {
   const { studentNumbers } = req.body;
   console.log("Student Numbers", studentNumbers);
@@ -10136,6 +10335,164 @@ app.get("/api/department-sections", async (req, res) => {
       .json({ error: "Database error", details: err.message });
   }
 });
+
+app.get("/api/slot-monitoring-sections", async (req, res) => {
+  const {
+    departmentId,
+    courseId,
+    programId,
+    yearId,
+    semesterId,
+    campus,
+  } = req.query;
+
+  if (
+    !departmentId ||
+    !courseId ||
+    !programId ||
+    !yearId ||
+    !semesterId ||
+    !campus
+  ) {
+    return res.status(400).json({
+      error:
+        "departmentId, courseId, programId, yearId, semesterId, and campus are required",
+    });
+  }
+
+  const query = `
+    SELECT
+      dst.id AS department_section_id,
+      ct.curriculum_id,
+      pt.program_code,
+      pt.program_description,
+      st.description AS section_description,
+      cst.course_code,
+      GROUP_CONCAT(
+        DISTINCT CONCAT(
+          TIME_FORMAT(tt.school_time_start, '%h:%i %p'),
+          ' - ',
+          TIME_FORMAT(tt.school_time_end, '%h:%i %p')
+        )
+        ORDER BY tt.school_time_start
+        SEPARATOR ', '
+      ) AS schedule,
+      dst.max_slots
+    FROM dprtmnt_section_table dst
+    INNER JOIN dprtmnt_curriculum_table dct ON dst.curriculum_id = dct.curriculum_id
+    INNER JOIN section_table st ON dst.section_id = st.id
+    LEFT JOIN time_table tt ON dst.id = tt.department_section_id
+    INNER JOIN curriculum_table ct ON dct.curriculum_id = ct.curriculum_id
+    INNER JOIN program_table pt ON ct.program_id = pt.program_id
+    LEFT JOIN active_school_year_table sy ON tt.school_year_id = sy.id
+    LEFT JOIN course_table cst ON tt.course_id = cst.course_id
+    WHERE dct.dprtmnt_id = ?
+      AND tt.course_id = ?
+      AND pt.program_id = ?
+      AND sy.year_id = ?
+      AND sy.semester_id = ?
+      AND pt.components = ?
+    GROUP BY dst.id, ct.curriculum_id, pt.program_code, pt.program_description, st.description, cst.course_code, dst.max_slots
+    ORDER BY st.description ASC
+  `;
+
+  try {
+    const [rows] = await db3.query(query, [
+      departmentId,
+      courseId,
+      programId,
+      yearId,
+      semesterId,
+      campus,
+    ]);
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error("Error fetching slot monitoring sections:", err);
+    return res.status(500).json({
+      error: "Database error",
+      details: err.message,
+    });
+  }
+});
+
+app.post("/api/slot-monitoring-enrolled-count", async (req, res) => {
+  const { curriculumId, sectionIds, activeSchoolYearId, courseId } = req.body;
+
+  if (!curriculumId || !activeSchoolYearId || !courseId) {
+    return res.status(400).json({
+      error: "curriculumId, activeSchoolYearId, and courseId are required",
+    });
+  }
+
+  if (!Array.isArray(sectionIds) || sectionIds.length === 0) {
+    return res.status(200).json([]);
+  }
+
+  const sectionPlaceholders = sectionIds.map(() => "?").join(", ");
+
+  const query = `
+    SELECT
+      es.department_section_id,
+      COUNT(es.student_number) AS enrolled_student
+    FROM enrolled_subject es
+    INNER JOIN dprtmnt_section_table dst ON es.department_section_id = dst.id
+    INNER JOIN active_school_year_table sy ON es.active_school_year_id = sy.id
+    WHERE es.curriculum_id = ?
+      AND es.department_section_id IN (${sectionPlaceholders})
+      AND es.active_school_year_id = ?
+      AND es.course_id = ?
+    GROUP BY es.department_section_id
+  `;
+
+  try {
+    const params = [curriculumId, ...sectionIds, activeSchoolYearId, courseId];
+    const [rows] = await db3.query(query, params);
+    console.log("Enrolled counts:", rows);
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error("Error fetching slot monitoring enrolled counts:", err);
+    return res.status(500).json({
+      error: "Database error",
+      details: err.message,
+    });
+  }
+});
+
+app.put(
+  "/api/slot-monitoring-sections/:departmentSectionId/max-slots",
+  async (req, res) => {
+    const { departmentSectionId } = req.params;
+    const { max_slots } = req.body;
+
+    const parsedSlots = Number(max_slots);
+
+    if (!departmentSectionId || Number.isNaN(parsedSlots) || parsedSlots < 0) {
+      return res.status(400).json({
+        error:
+          "departmentSectionId is required and max_slots must be a non-negative number",
+      });
+    }
+
+    try {
+      const [result] = await db3.query(
+        "UPDATE dprtmnt_section_table SET max_slots = ? WHERE id = ?",
+        [parsedSlots, departmentSectionId],
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: "Department section not found" });
+      }
+
+      return res.status(200).json({ message: "Max slots updated successfully" });
+    } catch (err) {
+      console.error("Error updating slot monitoring max slots:", err);
+      return res.status(500).json({
+        error: "Database error",
+        details: err.message,
+      });
+    }
+  },
+);
 
 app.put("/api/update-active-curriculum", async (req, res) => {
   const { studentId, departmentSectionId } = req.body;
@@ -10922,7 +11279,7 @@ app.post("/save_to_unifast", async (req, res) => {
     const statusValue = Number.isFinite(Number(status)) ? Number(status) : 1;
     const [unifastScholarships] = await db3.query(
       `SELECT id
-       FROM scholarship_types
+       FROM scholarship_type
        WHERE UPPER(TRIM(scholarship_name)) LIKE '%UNIFAST%'
          AND scholarship_status = 1
        ORDER BY id ASC
@@ -10944,7 +11301,7 @@ app.post("/save_to_unifast", async (req, res) => {
         academic_units_enrolled, academic_units_nstp_enrolled, tuition_fees, nstp_fees, athletic_fees, computer_fees,
         cultural_fees, development_fees, guidance_fees, laboratory_fees, library_fees,
         medical_and_dental_fees, registration_fees, school_id_fees, total_tosf, remark, active_school_year_id, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
@@ -12045,7 +12402,11 @@ app.get("/api/get/all_schedule/:roomID", async (req, res) => {
         cst.course_code,
         rmt.room_description,
         pgt.program_code,
+        pft.employee_id,
         tt.ishonorarium,
+        yt.year_description AS current_year,
+        yt.year_description + 1 AS next_year,
+        smt.semester_description,
         st.description AS section_description
       FROM time_table AS tt
         LEFT JOIN room_day_table AS rdt ON tt.room_day = rdt.id
@@ -12058,6 +12419,8 @@ app.get("/api/get/all_schedule/:roomID", async (req, res) => {
         LEFT JOIN room_table AS rmt ON tt.department_room_id = rmt.room_id
         LEFT JOIN section_table AS st ON dst.section_id = st.id
         LEFT JOIN active_school_year_table AS sy ON tt.school_year_id = sy.id
+        LEFT JOIN year_table AS yt ON sy.year_id = yt.year_id
+        LEFT JOIN semester_table AS smt ON sy.semester_id = smt.semester_id
       WHERE (rmt.room_id = ? OR tt.department_room_id IS NULL) AND sy.astatus = 1;
     `;
     const [schedule] = await db3.execute(scheduleQuery, [roomID]);
@@ -12641,15 +13004,15 @@ app.get("/api/student_number", async (req, res) => {
         pst.first_name,
         pst.middle_name,
         pgt.program_description,
-        smt.semester_id,
         smt.semester_description,
         smt.semester_code,
         pgt.program_code,
         pgt.program_id,
         dpt.dprtmnt_id,
         dpt.dprtmnt_code,
-        pst.created_at,
         es.status,
+        sy.year_id,
+        sy.semester_id,
         es.en_remarks,
         ylt.year_level_description,
         es.curriculum_id
@@ -12659,8 +13022,9 @@ app.get("/api/student_number", async (req, res) => {
         INNER JOIN year_table AS yrt ON cmt.year_id = yrt.year_id
         INNER JOIN active_school_year_table AS sy ON es.active_school_year_id = sy.id
         INNER JOIN semester_table AS smt ON sy.semester_id = smt.semester_id
-        INNER JOIN student_status_table AS sst ON es.student_number = sst.student_number
-        INNER JOIN year_level_table AS ylt ON sst.year_level_id = ylt.year_level_id
+        INNER JOIN program_tagging_table AS ptt ON es.curriculum_id = ptt.curriculum_id
+          AND es.course_id = ptt.course_id AND sy.semester_id = ptt.semester_id
+        INNER JOIN year_level_table AS ylt ON ptt.year_level_id = ylt.year_level_id
         INNER JOIN student_numbering_table AS snt ON es.student_number = snt.student_number
         INNER JOIN person_table AS pst ON snt.person_id = pst.person_id
         INNER JOIN dprtmnt_curriculum_table AS dct ON cmt.curriculum_id = dct.curriculum_id
@@ -16192,7 +16556,7 @@ app.get("/get_college_professor_schedule/:dprtmnt_id", async (req, res) => {
       INNER JOIN active_school_year_table sy ON tt.school_year_id = sy.id
       LEFT JOIN year_table yt ON sy.year_id = yt.year_id
       LEFT JOIN semester_table st ON sy.semester_id = st.semester_id
-      WHERE dt.dprtmnt_id = ?
+      WHERE dt.dprtmnt_id = ? AND sy.astatus = 1
     `;
 
     const [rows] = await db3.execute(sql, [dprtmnt_id]);

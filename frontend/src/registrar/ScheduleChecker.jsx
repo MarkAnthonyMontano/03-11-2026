@@ -160,6 +160,8 @@ const ScheduleChecker = () => {
   const [roomFilter, setRoomFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("asc");
   const [searchTerm, setSearchTerm] = useState("");
+  const [openReviewDialog, setOpenReviewDialog] = useState(false);
+  const [selectedReviewEmployeeId, setSelectedReviewEmployeeId] = useState("");
   const { dprtmnt_id } = useParams();
 
   const fetchRoom = async () => {
@@ -325,14 +327,6 @@ const ScheduleChecker = () => {
       .catch((err) => console.error(err));
 
   }, []);
-
-  const handleSchoolYearChange = (event) => {
-    setSelectedAcademicSchoolYear(event.target.value);
-  };
-
-  const handleSchoolSemesterChange = (event) => {
-    setSelectedAcademicSchoolSemester(event.target.value);
-  };
 
   useEffect(() => {
     if (roomList.length > 0 && !selectedRoom) {
@@ -752,6 +746,46 @@ const ScheduleChecker = () => {
     indexOfLastItem
   );
 
+  const daySortOrder = {
+    MON: 1,
+    TUE: 2,
+    WED: 3,
+    THU: 4,
+    FRI: 5,
+    SAT: 6,
+    SUN: 7,
+  };
+
+  const parseScheduleTimeToMinutes = (value) => {
+    if (!value) return Number.MAX_SAFE_INTEGER;
+    const match = value.toString().trim().match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (!match) return Number.MAX_SAFE_INTEGER;
+    let hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const meridian = (match[3] || "").toUpperCase();
+    if (meridian === "PM" && hours < 12) hours += 12;
+    if (meridian === "AM" && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  };
+
+  const reviewedProfessorSchedules = selectedReviewEmployeeId
+    ? allschedules
+      .filter((row) => String(row.employee_id || "") === String(selectedReviewEmployeeId))
+      .sort((a, b) => {
+        const dayA = daySortOrder[(a.day || "").toUpperCase()] || 99;
+        const dayB = daySortOrder[(b.day || "").toUpperCase()] || 99;
+        if (dayA !== dayB) return dayA - dayB;
+
+        const startA = parseScheduleTimeToMinutes(a.school_time_start);
+        const startB = parseScheduleTimeToMinutes(b.school_time_start);
+        if (startA !== startB) return startA - startB;
+
+        const endA = parseScheduleTimeToMinutes(a.school_time_end);
+        const endB = parseScheduleTimeToMinutes(b.school_time_end);
+        return endA - endB;
+      })
+    : [];
+
   useEffect(() => {
     setCurrentPage(1);
   }, [
@@ -865,7 +899,7 @@ const ScheduleChecker = () => {
               </span>
             )}
             {entry.section_description && entry.section_description !== 0 && entry.section_description !== "0" && entry.room_description && (
-              <span className="block truncate text-[8px]">{entry.room_description}</span>
+              <span className="block truncate text-[8px] max-w-[100px]">{entry.room_description}</span>
             )}
           </>;
       } else {
@@ -989,551 +1023,10 @@ const ScheduleChecker = () => {
         >
           SCHEDULE CHECKER
         </Typography>
-
-        <TextField
-          variant="outlined"
-          size="small"
-          placeholder="Search Name / ID"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{
-            width: 350,
-            backgroundColor: "#fff",
-            borderRadius: 1,
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "10px",
-            },
-            "& input": {
-              fontSize: "14px",
-              padding: "10px",
-            },
-          }}
-          InputProps={{
-            startAdornment: <SearchIcon sx={{ mr: 1, color: "gray" }} />,
-          }}
-        />
       </Box>
 
       <hr style={{ border: "1px solid #ccc", width: "100%" }} />
-      <br />
 
-      <Box sx={{ width: "100%", overflowX: "auto", marginTop: "1rem" }}>
-
-        <TableContainer component={Paper} sx={{ width: '100%', }}>
-          <Table size="small">
-            <TableHead sx={{ backgroundColor: '#6D2323', color: "white" }}>
-              <TableRow>
-                <TableCell colSpan={10} sx={{ border: `2px solid ${borderColor}`, py: 0.5, backgroundColor: settings?.header_color || "#1976d2", color: "white" }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    {/* Left: Total Count */}
-                    <Typography fontSize="14px" fontWeight="bold" color="white">
-                      Total Schedule Inserted: {filteredScheduleList.length}
-                    </Typography>
-
-                    {/* Right: Pagination Controls */}
-                    <Box display="flex" alignItems="center" gap={1}>
-                      {/* First & Prev */}
-                      {/* <Button
-                                    onClick={() => setCurrentPage(1)}
-                                    disabled={currentPage === 1}
-                                    variant="outlined"
-                                    size="small"
-                                    sx={{
-                                        minWidth: 80,
-                                        color: "white",
-                                        borderColor: "white",
-                                        backgroundColor: "transparent",
-                                        '&:hover': {
-                                            borderColor: 'white',
-                                            backgroundColor: 'rgba(255,255,255,0.1)',
-                                        },
-                                        '&.Mui-disabled': {
-                                            color: "white",
-                                            borderColor: "white",
-                                            backgroundColor: "transparent",
-                                            opacity: 1,
-                                        }
-                                    }}
-                                >
-                                    First
-                                </Button> */}
-
-                      {/* <Button
-                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                    disabled={currentPage === 1}
-                                    variant="outlined"
-                                    size="small"
-                                    sx={{
-                                        minWidth: 80,
-                                        color: "white",
-                                        borderColor: "white",
-                                        backgroundColor: "transparent",
-                                        '&:hover': {
-                                            borderColor: 'white',
-                                            backgroundColor: 'rgba(255,255,255,0.1)',
-                                        },
-                                        '&.Mui-disabled': {
-                                            color: "white",
-                                            borderColor: "white",
-                                            backgroundColor: "transparent",
-                                            opacity: 1,
-                                        }
-                                    }}
-                                >
-                                    Prev
-                                </Button> */}
-
-                      {/* Page Dropdown */}
-                      {/* <FormControl size="small" sx={{ minWidth: 80 }}>
-                                    <Select
-                                        value={currentPage}
-                                        onChange={(e) => setCurrentPage(Number(e.target.value))}
-                                        displayEmpty
-                                        sx={{
-                                            fontSize: '12px',
-                                            height: 36,
-                                            color: 'white',
-                                            border: '1px solid white',
-                                            backgroundColor: 'transparent',
-                                            '.MuiOutlinedInput-notchedOutline': {
-                                                borderColor: 'white',
-                                            },
-                                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                borderColor: 'white',
-                                            },
-                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                borderColor: 'white',
-                                            },
-                                            '& svg': {
-                                                color: 'white', // dropdown arrow icon color
-                                            }
-                                        }}
-                                        MenuProps={{
-                                            PaperProps: {
-                                                sx: {
-                                                    maxHeight: 200,
-                                                    backgroundColor: '#fff', // dropdown background
-                                                }
-                                            }
-                                        }}
-                                    >
-                                        {Array.from({ length: totalPages }, (_, i) => (
-                                            <MenuItem key={i + 1} value={i + 1}>
-                                                Page {i + 1}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl> */}
-
-                      {/* <Typography fontSize="11px" color="white">
-                                    of {totalPages} page{totalPages > 1 ? 's' : ''}
-                                </Typography> */}
-
-                      {/* Next & Last */}
-                      {/* <Button
-                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                    disabled={currentPage === totalPages}
-                                    variant="outlined"
-                                    size="small"
-                                    sx={{
-                                        minWidth: 80,
-                                        color: "white",
-                                        borderColor: "white",
-                                        backgroundColor: "transparent",
-                                        '&:hover': {
-                                            borderColor: 'white',
-                                            backgroundColor: 'rgba(255,255,255,0.1)',
-                                        },
-                                        '&.Mui-disabled': {
-                                            color: "white",
-                                            borderColor: "white",
-                                            backgroundColor: "transparent",
-                                            opacity: 1,
-                                        }
-                                    }}
-                                >
-                                    Next
-                                </Button> */}
-
-                      {/* <Button
-                                    onClick={() => setCurrentPage(totalPages)}
-                                    disabled={currentPage === totalPages}
-                                    variant="outlined"
-                                    size="small"
-                                    sx={{
-                                        minWidth: 80,
-                                        color: "white",
-                                        borderColor: "white",
-                                        backgroundColor: "transparent",
-                                        '&:hover': {
-                                            borderColor: 'white',
-                                            backgroundColor: 'rgba(255,255,255,0.1)',
-                                        },
-                                        '&.Mui-disabled': {
-                                            color: "white",
-                                            borderColor: "white",
-                                            backgroundColor: "transparent",
-                                            opacity: 1,
-                                        }
-                                    }}
-                                >
-                                    Last
-                                </Button> */}
-                    </Box>
-
-                    <Box style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-
-                      <FormControl size="small" sx={{ minWidth: 140 }}>
-                        <Select
-                          value={programFilter}
-                          onChange={(e) => setProgramFilter(e.target.value)}
-                          displayEmpty
-                          sx={filterControlSX}
-                          MenuProps={{
-                            PaperProps: {
-                              sx: {
-                                maxHeight: 200,
-                                backgroundColor: "#fff",
-                              },
-                            },
-                          }}
-                        >
-                          <MenuItem value="all">All Programs</MenuItem>
-                          {programList.map((prog) => (
-                            <MenuItem key={prog.program_id} value={prog.program_id}>
-                              {prog.program_code}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                      <FormControl size="small" sx={{ minWidth: 140 }}>
-                        <Select
-                          value={roomFilter}
-                          onChange={(e) => setRoomFilter(e.target.value)}
-                          displayEmpty
-                          sx={filterControlSX}
-                          MenuProps={{
-                            PaperProps: {
-                              sx: { maxHeight: 200, backgroundColor: "#fff" },
-                            },
-                          }}
-                        >
-                          <MenuItem value="all">All Rooms</MenuItem>
-                          {roomList.map((room) => (
-                            <MenuItem key={room.room_id} value={room.room_id}>
-                              {room.room_description}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                      <FormControl size="small" sx={{ minWidth: 160 }}>
-                        <Select
-                          value={selectedAcademicSchoolYear || "all"}
-                          onChange={(e) =>
-                            setSelectedAcademicSchoolYear(
-                              e.target.value === "all" ? "" : e.target.value
-                            )
-                          }
-                          displayEmpty
-                          sx={filterControlSX}
-                          MenuProps={{
-                            PaperProps: {
-                              sx: { maxHeight: 200, backgroundColor: "#fff" },
-                            },
-                          }}
-                        >
-                          <MenuItem value="all">All Years</MenuItem>
-                          {schoolYears.map((year) => (
-                            <MenuItem key={year.year_id} value={year.year_id}>
-                              {year.current_year} - {year.next_year}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-
-                      <FormControl size="small" sx={{ minWidth: 150 }}>
-                        <Select
-                          value={selectedAcademicSchoolSemester || "all"}
-                          onChange={(e) =>
-                            setSelectedAcademicSchoolSemester(
-                              e.target.value === "all" ? "" : e.target.value
-                            )
-                          }
-                          displayEmpty
-                          sx={filterControlSX}
-                          MenuProps={{
-                            PaperProps: {
-                              sx: {
-                                maxHeight: 200,
-                                backgroundColor: "#fff",
-                              },
-                            },
-                          }}
-                        >
-                          <MenuItem value="all">All Semesters</MenuItem>
-                          {semesters.map((sem) => (
-                            <MenuItem key={sem.semester_id} value={sem.semester_id}>
-                              {sem.semester_description}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() =>
-                          setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
-                        }
-                        sx={{
-                          minWidth: 90,
-                          height: 36,
-                          fontSize: "12px",
-                          color: "white",
-                          borderColor: "white",
-                          backgroundColor: "transparent",
-                          "&:hover": {
-                            backgroundColor: "rgba(255,255,255,0.1)",
-                          },
-                        }}
-                      >
-                        {sortOrder.toUpperCase()} ORDER
-                      </Button>
-                    </Box>
-                  </Box>
-                </TableCell>
-              </TableRow>
-            </TableHead>
-          </Table>
-        </TableContainer>
-
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead >
-            <tr>
-              <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600", borderTop: "none" }}>#</td>
-              <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600", borderTop: "none" }}>Employee ID</td>
-              <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600", borderTop: "none" }}>Professor Name</td>
-              <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600", borderTop: "none" }}>Course Assigned</td>
-              <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600", borderTop: "none" }}>Section Assigned</td>
-              <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600", borderTop: "none" }}>Day</td>
-              <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600", borderTop: "none" }}>Time Start</td>
-              <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600", borderTop: "none" }}>Time End</td>
-              <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600", borderTop: "none" }}>Room</td>
-              <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600", borderTop: "none" }}>Types</td>
-              <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600", borderTop: "none" }}>Academic Year</td>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filteredScheduleList.map((row, index) => (
-              <tr key={index}>
-                <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{index + 1}</td>
-
-                <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{row.employee_id}</td>
-
-                <td style={{ border: "solid black 1px", padding: "4px 8px", fontSize: "0.85rem" }}>
-                  {row.fname} {row.mname?.charAt(0)}. {row.lname}
-                </td>
-
-                <td style={{ border: "solid black 1px", padding: "4px 8px", fontSize: "0.85rem" }}>{row.course_code}</td>
-
-                <td style={{ border: "solid black 1px", padding: "4px 8px", fontSize: "0.85rem" }}>
-                  {row.program_code}-{row.section_description}
-                </td>
-
-                <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{row.day}</td>
-
-                <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{row.school_time_start}</td>
-
-                <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{row.school_time_end}</td>
-
-                <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{row.room_description}</td>
-
-                <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>
-                  {row.ishonorarium === 1
-                    ? "Honorarium"
-                    : "Regular Class"}
-                </td>
-
-                <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>
-                  {row.current_year}-{row.next_year}, {row.semester_description}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <TableContainer component={Paper} sx={{ width: '100%', }}>
-          <Table size="small">
-            <TableHead sx={{ backgroundColor: '#6D2323', color: "white" }}>
-              <TableRow>
-                <TableCell colSpan={10} sx={{ border: `2px solid ${borderColor}`, py: 0.5, backgroundColor: settings?.header_color || "#1976d2", color: "white" }}>
-                  <Box
-                    display="flex"
-                    justifyContent="flex-end"
-                    alignItems="center"
-                    gap={1}
-                    flexWrap="wrap"
-                  >
-                    <Button
-                      onClick={() => setCurrentPage(1)}
-                      disabled={currentPage === 1}
-                      variant="outlined"
-                      size="small"
-                      sx={{
-                        minWidth: 80,
-                        color: "white",
-                        borderColor: "white",
-                        backgroundColor: "transparent",
-                        '&:hover': {
-                          borderColor: 'white',
-                          backgroundColor: 'rgba(255,255,255,0.1)',
-                        },
-                        '&.Mui-disabled': {
-                          color: "white",
-                          borderColor: "white",
-                          backgroundColor: "transparent",
-                          opacity: 1,
-                        }
-                      }}
-                    >
-                      First
-                    </Button>
-
-                    <Button
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                      variant="outlined"
-                      size="small"
-                      sx={{
-                        minWidth: 80,
-                        color: "white",
-                        borderColor: "white",
-                        backgroundColor: "transparent",
-                        '&:hover': {
-                          borderColor: 'white',
-                          backgroundColor: 'rgba(255,255,255,0.1)',
-                        },
-                        '&.Mui-disabled': {
-                          color: "white",
-                          borderColor: "white",
-                          backgroundColor: "transparent",
-                          opacity: 1,
-                        }
-                      }}
-                    >
-                      Prev
-                    </Button>
-
-
-                    {/* Page Dropdown */}
-                    <FormControl size="small" sx={{ minWidth: 80 }}>
-                      <Select
-                        value={currentPage}
-                        onChange={(e) => setCurrentPage(Number(e.target.value))}
-                        displayEmpty
-                        sx={{
-                          fontSize: '12px',
-                          height: 36,
-                          color: 'white',
-                          border: '1px solid white',
-                          backgroundColor: 'transparent',
-                          '.MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'white',
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'white',
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'white',
-                          },
-                          '& svg': {
-                            color: 'white', // dropdown arrow icon color
-                          }
-                        }}
-                        MenuProps={{
-                          PaperProps: {
-                            sx: {
-                              maxHeight: 200,
-                              backgroundColor: '#fff', // dropdown background
-                            }
-                          }
-                        }}
-                      >
-                        {Array.from({ length: totalPages }, (_, i) => (
-                          <MenuItem key={i + 1} value={i + 1}>
-                            Page {i + 1}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-
-                    <Typography fontSize="11px" color="white">
-                      of {totalPages} page{totalPages > 1 ? 's' : ''}
-                    </Typography>
-
-
-                    {/* Next & Last */}
-                    <Button
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                      variant="outlined"
-                      size="small"
-                      sx={{
-                        minWidth: 80,
-                        color: "white",
-                        borderColor: "white",
-                        backgroundColor: "transparent",
-                        '&:hover': {
-                          borderColor: 'white',
-                          backgroundColor: 'rgba(255,255,255,0.1)',
-                        },
-                        '&.Mui-disabled': {
-                          color: "white",
-                          borderColor: "white",
-                          backgroundColor: "transparent",
-                          opacity: 1,
-                        }
-                      }}
-                    >
-                      Next
-                    </Button>
-
-                    <Button
-                      onClick={() => setCurrentPage(totalPages)}
-                      disabled={currentPage === totalPages}
-                      variant="outlined"
-                      size="small"
-                      sx={{
-                        minWidth: 80,
-                        color: "white",
-                        borderColor: "white",
-                        backgroundColor: "transparent",
-                        '&:hover': {
-                          borderColor: 'white',
-                          backgroundColor: 'rgba(255,255,255,0.1)',
-                        },
-                        '&.Mui-disabled': {
-                          color: "white",
-                          borderColor: "white",
-                          backgroundColor: "transparent",
-                          opacity: 1,
-                        }
-                      }}
-                    >
-                      Last
-                    </Button>
-
-                  </Box>
-                </TableCell>
-              </TableRow>
-            </TableHead>
-          </Table>
-        </TableContainer>
-      </Box>
-
-
-      <br />
       {message && (
         <Snackbar
           open={openSnackbar}
@@ -1556,16 +1049,15 @@ const ScheduleChecker = () => {
       )}
 
       <br />
-      <br />
       <TableContainer component={Paper} sx={{ width: '100%', border: `2px solid ${borderColor}` }}>
-            <Table>
-              <TableHead sx={{ backgroundColor: settings?.header_color || "#1976d2", }}>
-                <TableRow>
-                  <TableCell sx={{ color: 'white', textAlign: "Center" }}>Existing Schedule</TableCell>
-                </TableRow>
-              </TableHead>
-            </Table>
-          </TableContainer>
+        <Table>
+          <TableHead sx={{ backgroundColor: settings?.header_color || "#1976d2", }}>
+            <TableRow>
+              <TableCell sx={{ color: 'white', textAlign: "Center" }}>Existing Schedule</TableCell>
+            </TableRow>
+          </TableHead>
+        </Table>
+      </TableContainer>
 
       <Box sx={{ display: "flex", gap: "1rem" }}>
         <Box>
@@ -1577,9 +1069,9 @@ const ScheduleChecker = () => {
               border: `2px solid ${borderColor}`,
               backgroundColor: "white",
               padding: "2rem",
-           
+              marginTop: "1rem",
               boxShadow: "0px 0px 10px rgba(0,0,0,0.1)",
-           
+
             }}
           >
             {/* Day */}
@@ -1798,24 +1290,33 @@ const ScheduleChecker = () => {
           </form>
         </Box>
         <Box sx={{ display: "flex", flexDirection: "column", marginTop: "1rem", gap: "0.4rem" }}>
-          <Button
-            className="hover:bg-[#000000] text-white px-6 py-2 rounded w-[200px]"
-            variant="contained"
-            onClick={() => {
-              const newMode = !isDesignationMode;
-              setIsDesignationMode(newMode);
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button
+              className="hover:bg-[#000000] text-white px-6 py-2 rounded w-[200px]"
+              variant="contained"
+              onClick={() => {
+                const newMode = !isDesignationMode;
+                setIsDesignationMode(newMode);
 
-              if (newMode) {
-                // switched FROM regular → designation
-                fetchDesignationList();
-              } else {
-                // switched FROM designation → regular
-                fetchCourseList();
-              }
-            }}
-          >
-            {isDesignationMode ? "Assign Regular Load" : "Assign Designation"}
-          </Button>
+                if (newMode) {
+                  // switched FROM regular → designation
+                  fetchDesignationList();
+                } else {
+                  // switched FROM designation → regular
+                  fetchCourseList();
+                }
+              }}
+            >
+              {isDesignationMode ? "Assign Regular Load" : "Assign Designation"}
+            </Button>
+            <Button
+              className="hover:bg-[#000000] text-white px-6 py-2 rounded w-[200px]"
+              variant="contained"
+              onClick={() => setOpenReviewDialog(true)}
+            >
+              Review Schedule
+            </Button>
+          </Box>
           <table className="mt-[0.7rem]">
             <thead className="bg-[#c0c0c0]">
               <tr className="min-w-[6.5rem] min-h-[2.2rem] flex items-center justify-center border border-black border-b-0 text-[14px] font-semibold">
@@ -2813,17 +2314,17 @@ const ScheduleChecker = () => {
                               : undefined
                           }}
                           className={`h-[1.25rem] border border-black border-t-0 border-l-0 flex items-center justify-center
-                                                        ${isTimeInSchedule("8:00 PM", "8:30 PM", day) &&
-                              hasAdjacentSchedule("8:00 PM", "8:30 PM", day, "top") === "same"
-                              ? "border-t-0"
-                              : ""
-                            }
-                                                        ${isTimeInSchedule("8:00 PM", "8:30 PM", day) &&
-                              hasAdjacentSchedule("8:00 PM", "8:30 PM", day, "bottom") === "same"
-                              ? "border-b-0"
-                              : ""
-                            }
-                                                        `}
+                              ${isTimeInSchedule("8:00 PM", "8:30 PM", day) &&
+                                hasAdjacentSchedule("8:00 PM", "8:30 PM", day, "top") === "same"
+                                ? "border-t-0"
+                                : ""
+                              }
+                              ${isTimeInSchedule("8:00 PM", "8:30 PM", day) &&
+                                hasAdjacentSchedule("8:00 PM", "8:30 PM", day, "bottom") === "same"
+                                ? "border-b-0"
+                                : ""
+                              }
+                        `}
                         >
                           {getCenterText("8:00 PM", day)}
                         </div>
@@ -2846,7 +2347,7 @@ const ScheduleChecker = () => {
                               ? "border-b-0"
                               : ""
                             }
-                                                        `}
+                                             `}
                         >
                           {getCenterText("8:30 PM", day)}
                         </div>
@@ -2857,11 +2358,98 @@ const ScheduleChecker = () => {
               </tr>
             </tbody>
           </table>
-
-
         </Box>
       </Box>
 
+      <Dialog
+        open={openReviewDialog}
+        onClose={() => setOpenReviewDialog(false)}
+        fullWidth
+        maxWidth="lg"
+      >
+        <DialogTitle>Review Schedule</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 1, mb: 2 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="review-prof-label">Professor</InputLabel>
+              <Select
+                labelId="review-prof-label"
+                label="Professor"
+                value={selectedReviewEmployeeId}
+                onChange={(e) => setSelectedReviewEmployeeId(e.target.value)}
+              >
+                <MenuItem value="">
+                  <em>Select Professor</em>
+                </MenuItem>
+                {filteredProfessors.map((prof) => (
+                  <MenuItem key={prof.prof_id} value={prof.employee_id}>
+                    {prof.employee_id} - {prof.fname} {prof.mname?.charAt(0)}. {prof.lname}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+
+          {selectedReviewEmployeeId ? (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>#</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Employee ID</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Professor Name</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Course Assigned</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Section Assigned</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Day</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Time Start</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Time End</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Room</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Types</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Academic Year</td>
+                </tr>
+              </thead>
+              <tbody>
+                {reviewedProfessorSchedules.map((row, index) => (
+                  <tr key={`${row.employee_id}-${row.day}-${row.school_time_start}-${row.school_time_end}-${index}`}>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{index + 1}</td>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{row.employee_id}</td>
+                    <td style={{ border: "solid black 1px", padding: "4px 8px", fontSize: "0.85rem" }}>
+                      {row.fname} {row.mname?.charAt(0)}. {row.lname}
+                    </td>
+                    <td style={{ border: "solid black 1px", padding: "4px 8px", fontSize: "0.85rem" }}>{row.course_code}</td>
+                    <td style={{ border: "solid black 1px", padding: "4px 8px", fontSize: "0.85rem" }}>
+                      {row.program_code}-{row.section_description}
+                    </td>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{row.day}</td>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{row.school_time_start}</td>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{row.school_time_end}</td>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{row.room_description}</td>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>
+                      {row.ishonorarium === 1 ? "Honorarium" : "Regular Class"}
+                    </td>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>
+                      {row.current_year}-{row.next_year}, {row.semester_description}
+                    </td>
+                  </tr>
+                ))}
+                {reviewedProfessorSchedules.length === 0 && (
+                  <tr>
+                    <td colSpan={11} style={{ textAlign: "center", border: "solid black 1px", padding: "8px", fontSize: "0.85rem" }}>
+                      No schedule found for the selected professor.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Select a professor to review schedule.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenReviewDialog(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={openDialogue}

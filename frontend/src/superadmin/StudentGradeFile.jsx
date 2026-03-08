@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SettingsContext } from "../App";
 import axios from 'axios';
-import { Box, Button, Typography, TextField, Paper, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Snackbar, Alert, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Select, MenuItem } from '@mui/material';
+import { Box, Button, Typography, TextField, Paper, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Snackbar, Alert, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { Search as SearchIcon } from '@mui/icons-material';
 import API_BASE_URL from '../apiConfig';
 import Unauthorized from "../components/Unauthorized";
@@ -20,6 +20,7 @@ const StudentGradeFile = () => {
     const [companyName, setCompanyName] = useState("");
     const [shortTerm, setShortTerm] = useState("");
     const [campusAddress, setCampusAddress] = useState("");
+    const [branches, setBranches] = useState([]);
 
     const [selectedYearLevel, setSelectedYearLevel] = useState("");
     const [selectedSemester, setSelectedSemester] = useState("");
@@ -48,6 +49,22 @@ const StudentGradeFile = () => {
         if (settings.company_name) setCompanyName(settings.company_name);
         if (settings.short_term) setShortTerm(settings.short_term);
         if (settings.campus_address) setCampusAddress(settings.campus_address);
+
+        if (settings?.branches) {
+            try {
+                const parsed =
+                    typeof settings.branches === "string"
+                        ? JSON.parse(settings.branches)
+                        : settings.branches;
+                setBranches(parsed);
+                if (parsed?.length > 0) {
+                    setCampusFilter((prev) => prev || String(parsed[0].id));
+                }
+            } catch (err) {
+                console.error("Failed to parse branches:", err);
+                setBranches([]);
+            }
+        }
 
     }, [settings]);
 
@@ -149,6 +166,15 @@ const StudentGradeFile = () => {
 
 
     const fetchStudent = async () => {
+        if (!campusFilter) {
+            setSnackbar({
+                open: true,
+                message: "Please select a campus first",
+                severity: "warning",
+            });
+            return;
+        }
+
         try {
             const res = await axios.get(
                 `${API_BASE_URL}/student/student-info`,
@@ -211,7 +237,7 @@ const StudentGradeFile = () => {
     };
 
     useEffect(() => {
-        if (!searchQuery || campusFilter === null) {
+        if (!searchQuery || !campusFilter) {
             setStudentInfo(null);
             return;
         }
@@ -465,18 +491,31 @@ const StudentGradeFile = () => {
                 <Typography>
                     Campus:
                 </Typography>
-                <TextField
-                    select
-                    label="Campus"
-                    size="small"
-                    value={campusFilter}
-                    onChange={(e) => setCampusFilter(e.target.value)}
-                    SelectProps={{ native: true }}
-                    sx={{ width: 150 }}
-                >
-                    <option value="1">Manila</option>
-                    <option value="0">Cavite</option>
-                </TextField>
+                <FormControl size="small" sx={{ width: 220 }}>
+                    <InputLabel id="campus-branch-label">Campus</InputLabel>
+                    <Select
+                        labelId="campus-branch-label"
+                        label="Campus"
+                        value={campusFilter}
+                        onChange={(e) => setCampusFilter(e.target.value)}
+                    >
+                        <MenuItem value="">
+                            <em>All Campuses</em>
+                        </MenuItem>
+                        {branches.length > 0 ? (
+                            branches.map((branch) => (
+                                <MenuItem key={branch.id} value={String(branch.id)}>
+                                    {branch.branch}
+                                </MenuItem>
+                            ))
+                        ) : (
+                            [
+                                <MenuItem key="manila" value="1">Manila</MenuItem>,
+                                <MenuItem key="cavite" value="0">Cavite</MenuItem>,
+                            ]
+                        )}
+                    </Select>
+                </FormControl>
             </Box>
 
             <TableContainer component={Paper} sx={{ width: '100%', border: `2px solid ${borderColor}`, }}>
@@ -498,10 +537,10 @@ const StudentGradeFile = () => {
                             </TableCell>
                             <TableCell sx={{ fontWeight: "700" }}>
                                 {studentInfo && studentInfo.length > 0 && (
-                                    <>
-                                        {studentInfo[0].last_name?.toUpperCase()}{" "}
-                                        {studentInfo[0].first_name?.toUpperCase()}{" "}
-                                        {studentInfo[0].middle_name?.toUpperCase()}
+                                    <> 
+                                        {studentInfo[0].last_name?.toUpperCase() || ""}{" "}
+                                        {studentInfo[0].first_name?.toUpperCase() || ""}{" "}
+                                        {studentInfo[0].middle_name?.toUpperCase() || ""}
                                     </>
                                 )}
                             </TableCell>
@@ -511,7 +550,7 @@ const StudentGradeFile = () => {
                             <TableCell>
                                 {studentInfo && studentInfo.length > 0 && (
                                     <>
-                                        {studentInfo[0].student_number?.toUpperCase()}
+                                        {studentInfo[0].student_number?.toUpperCase() || ""}
                                     </>
                                 )}
                             </TableCell>
@@ -768,7 +807,7 @@ const StudentGradeFile = () => {
                                                                     : "-"}
                                             </TableCell>
                                             <TableCell></TableCell>
-                                            <TableCell>{course.remarks.toUpperCase()}</TableCell>
+                                            <TableCell>{course.remarks?.toUpperCase()}</TableCell>
                                             <TableCell>
                                                 <Button
                                                     color="error"
@@ -788,7 +827,7 @@ const StudentGradeFile = () => {
                                         </TableCell>
                                         <TableCell sx={{ textAlign: "center", fontWeight: "700" }}>
                                             {groupedGrades[yearLevel][semester].reduce(
-                                                (sum, course) => sum + (course.course_unit || 0),
+                                                (sum, course) => sum + (Number(course.course_unit) || 0),
                                                 0
                                             )}
                                         </TableCell>

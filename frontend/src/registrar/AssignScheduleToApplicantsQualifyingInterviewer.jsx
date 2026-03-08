@@ -260,7 +260,6 @@ const AssignScheduleToApplicantsInterviewer = () => {
         const fetchCurriculums = async () => {
             try {
                 const response = await axios.get(`${API_BASE_URL}/api/applied_program/${adminData.dprtmnt_id}`);
-                console.log("✅ curriculumOptions:", response.data);
                 setCurriculumOptions(response.data);
             } catch (error) {
                 console.error("Error fetching curriculum options:", error);
@@ -711,6 +710,81 @@ Thank you and good luck!`
         );
 
         // OPEN the dialog
+        setConfirmOpen(true);
+    };
+
+    const handleSendEmailSingle = (applicant) => {
+        if (!applicant) {
+            setSnack({
+                open: true,
+                message: "Applicant data is missing.",
+                severity: "error",
+            });
+            return;
+        }
+
+        const targetScheduleId = applicant.schedule_id || selectedSchedule;
+        if (!targetScheduleId) {
+            setSnack({
+                open: true,
+                message: "This applicant has no assigned schedule.",
+                severity: "warning",
+            });
+            return;
+        }
+
+        const sched = schedules.find(
+            (s) => String(s.schedule_id) === String(targetScheduleId),
+        );
+        if (!sched) {
+            setSnack({
+                open: true,
+                message: "Schedule not found.",
+                severity: "error",
+            });
+            return;
+        }
+
+        const formattedStart = new Date(`1970-01-01T${sched.start_time}`).toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+        });
+
+        const formattedEnd = new Date(`1970-01-01T${sched.end_time}`).toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+        });
+
+        const formattedDate = new Date(sched.day_description).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        });
+
+        setSelectedSchedule(targetScheduleId);
+        setSelectedApplicants(new Set([applicant.applicant_number]));
+
+        setEmailMessage(
+            `Dear ${applicant.last_name || ""}, ${applicant.first_name || ""} ${applicant.middle_name || ""},
+
+You are scheduled for an interview on:
+
+📅 Date: ${formattedDate}
+🏢 Building: ${sched.building_description}
+🏫 Room: ${sched.room_description}
+🕒 Time: ${formattedStart} - ${formattedEnd}
+
+Please bring the following requirements:
+
+1. Log in at /login_applicant → Applicant Form → "Print Admission Form Process".
+2. Proceed to the Guidance Office for verification.
+3. Your Admission Form must be signed before taking the exam.
+
+Thank you and good luck!`
+        );
+
         setConfirmOpen(true);
     };
 
@@ -1807,11 +1881,7 @@ Thank you and good luck!`
                                                         variant="contained"
                                                         color="primary"
                                                         size="small"
-                                                        onClick={() => {
-
-                                                            setSelectedApplicants(new Set([applicantId])); // ✅ use applicantId
-                                                            handleSendEmails();
-                                                        }}
+                                                        onClick={() => handleSendEmailSingle(person)}
                                                     >
                                                         Send Email
                                                     </Button>
@@ -1930,3 +2000,5 @@ Thank you and good luck!`
 };
 
 export default AssignScheduleToApplicantsInterviewer;
+
+

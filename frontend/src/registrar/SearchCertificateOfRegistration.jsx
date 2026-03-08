@@ -24,6 +24,7 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import ClassIcon from "@mui/icons-material/Class";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import GradeIcon from "@mui/icons-material/Grade";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
 import SchoolIcon from "@mui/icons-material/School";
 import { useNavigate } from "react-router-dom";
 import API_BASE_URL from "../apiConfig";
@@ -31,10 +32,6 @@ import API_BASE_URL from "../apiConfig";
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import Unauthorized from "../components/Unauthorized";
 import LoadingOverlay from "../components/LoadingOverlay";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-
-
 
 const SearchCertificateOfRegistration = () => {
   const settings = useContext(SettingsContext);
@@ -131,6 +128,8 @@ const SearchCertificateOfRegistration = () => {
 
 
   const navigate = useNavigate();
+  const isTabNavigationRef = useRef(false);
+  const REGISTRAR_COR_SEARCH_KEY = "registrar_cor_search_student_number";
 
   const [activeStep, setActiveStep] = useState(3);
   const [clickedSteps, setClickedSteps] = useState([]);
@@ -144,7 +143,10 @@ const SearchCertificateOfRegistration = () => {
     { label: "Transcript of Records", to: "/transcript_of_records", icon: <SchoolIcon /> },
   ];
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [studentNumber, setStudentNumber] = useState(() => {
+    return sessionStorage.getItem(REGISTRAR_COR_SEARCH_KEY) || localStorage.getItem("studentNumberForCOR") || "";
+  });
+  const [debouncedStudentNumber, setDebouncedStudentNumber] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentData, setStudentData] = useState([]);
   const [studentDetails, setStudentDetails] = useState([]);
@@ -162,7 +164,7 @@ const SearchCertificateOfRegistration = () => {
   };
 
   useEffect(() => {
-    if (!searchQuery || searchQuery.length < 5) {
+    if (!debouncedStudentNumber || debouncedStudentNumber.length < 5) {
       setSelectedStudent(null);
       setStudentData([]);
       return;
@@ -170,7 +172,7 @@ const SearchCertificateOfRegistration = () => {
 
     const fetchStudent = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/program_evaluation/${searchQuery}`);
+        const res = await fetch(`${API_BASE_URL}/api/program_evaluation/${debouncedStudentNumber}`);
         const data = await res.json();
 
 
@@ -178,11 +180,7 @@ const SearchCertificateOfRegistration = () => {
           setSelectedStudent(data);
           setStudentData(data);
 
-          if (searchQuery) {
-            localStorage.setItem("admin_edit_person_id", searchQuery);
-          }
-
-          const detailsRes = await fetch(`${API_BASE_URL}/api/program_evaluation/details/${searchQuery}`);
+          const detailsRes = await fetch(`${API_BASE_URL}/api/program_evaluation/details/${debouncedStudentNumber}`);
           const detailsData = await detailsRes.json();
           if (Array.isArray(detailsData) && detailsData.length > 0) {
             setStudentDetails(detailsData);
@@ -199,38 +197,31 @@ const SearchCertificateOfRegistration = () => {
       } catch (err) {
         console.error("Error fetching student", err);
         showSnackbar("Server error. Please try again.", "error");
-        localStorage.removeItem("admin_edit_person_id");
       }
     };
 
     fetchStudent();
-  }, [searchQuery]);
+  }, [debouncedStudentNumber]);
 
 
   const handleStepClick = (index, to) => {
     setActiveStep(index);
 
-    const pid = localStorage.getItem("admin_edit_person_id");
-    console.log(pid);
+    isTabNavigationRef.current = true;
+    const trimmed = studentNumber.trim();
+    if (trimmed) {
+      sessionStorage.setItem(REGISTRAR_COR_SEARCH_KEY, trimmed);
+    } else {
+      sessionStorage.removeItem(REGISTRAR_COR_SEARCH_KEY);
+    }
+    const pid = trimmed;
+
     if (pid && pid !== "undefined" && pid !== "null" && pid.length >= 9) {
       navigate(`${to}?student_number=${pid}`);
     } else {
       navigate(to);
     }
   };
-
-  useEffect(() => {
-    const storedId = localStorage.getItem("admin_edit_person_id");
-
-    if (storedId && storedId !== "undefined" && storedId !== "null" && storedId.length >= 9) {
-      setSearchQuery(storedId);
-    }
-  }, []);
-
-  const [studentNumber, setStudentNumber] = useState(() => {
-    return localStorage.getItem("studentNumberForCOR") || localStorage.getItem("admin_edit_person_id") || "";
-  });
-  const [debouncedStudentNumber, setDebouncedStudentNumber] = useState("");
 
   const divToPrintRef = useRef();
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -285,13 +276,17 @@ const SearchCertificateOfRegistration = () => {
 
 
   useEffect(() => {
-    if (studentNumber.trim().length >= 5) { // adjust min length if needed
-      const delayDebounce = setTimeout(() => {
-        setDebouncedStudentNumber(studentNumber);
-      }, 500); // half-second debounce
-
-      return () => clearTimeout(delayDebounce);
+    const trimmed = studentNumber.trim();
+    if (trimmed.length < 5) {
+      setDebouncedStudentNumber("");
+      return;
     }
+
+    const delayDebounce = setTimeout(() => {
+      setDebouncedStudentNumber(trimmed);
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
   }, [studentNumber]);
 
   useEffect(() => {
@@ -299,6 +294,22 @@ const SearchCertificateOfRegistration = () => {
       localStorage.removeItem("studentNumberForCOR");
     }
   }, [studentNumber]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      sessionStorage.removeItem(REGISTRAR_COR_SEARCH_KEY);
+      localStorage.removeItem("studentNumberForCOR");
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      if (!isTabNavigationRef.current) {
+        sessionStorage.removeItem(REGISTRAR_COR_SEARCH_KEY);
+        localStorage.removeItem("studentNumberForCOR");
+      }
+    };
+  }, []);
 
   // Put this at the very bottom before the return 
   if (loading || hasAccess === null) {

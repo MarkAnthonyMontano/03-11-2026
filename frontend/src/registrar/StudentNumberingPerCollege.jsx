@@ -111,11 +111,8 @@ const StudentNumbering = () => {
         { label: "Student Requirements", to: "/registrar_requirements", icon: <AssignmentTurnedInIcon fontSize="large" /> },
         { label: "Qualifying / Interview Exam Score", to: "/qualifying_interview_exam_scores", icon: <ScoreIcon fontSize="large" /> },
         { label: "Student Numbering", to: "/student_numbering_per_college", icon: <DashboardIcon fontSize="large" /> },
-        { label: "Course Tagging", to: "/course_tagging", icon: <MenuBookIcon fontSize="large" /> },
+        { label: "Course Tagging", to: "/course_tagging_for_college", icon: <MenuBookIcon fontSize="large" /> },
         { label: "Certificate of Registration", to: "/search_cor_for_college", icon: <SearchIcon fontSize="large" /> },
-
-
-
     ];
 
 
@@ -301,7 +298,6 @@ const StudentNumbering = () => {
         const fetchCurriculums = async () => {
             try {
                 const response = await axios.get(`${API_BASE_URL}/api/applied_program/${adminData.dprtmnt_id}`);
-                console.log("✅ curriculumOptions:", response.data);
                 setCurriculumOptions(response.data);
 
             } catch (error) {
@@ -1284,3 +1280,4 @@ const StudentNumbering = () => {
 };
 
 export default StudentNumbering;
+

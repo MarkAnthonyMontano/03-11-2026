@@ -7,7 +7,6 @@ import {
   FormControl,
   Select,
   MenuItem,
-  TextField,
   Button,
   Table,
   TableHead,
@@ -37,13 +36,6 @@ const StudentTable = ({ data, paymentType, onRemove }) => {
   // Dialog states
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmRow, setConfirmRow] = useState(null);
-  const [tempOpen, setTempOpen] = useState(false);
-  const [tempRow, setTempRow] = useState(null);
-  const [tempPassword, setTempPassword] = useState("");
-  const [tempError, setTempError] = useState("");
-  const [tempSending, setTempSending] = useState(false);
-  const [tempVerifying, setTempVerifying] = useState(false);
-  const [tempResending, setTempResending] = useState(false);
 
   useEffect(() => {
     if (!settings) return;
@@ -89,78 +81,8 @@ const StudentTable = ({ data, paymentType, onRemove }) => {
   };
   const handleConfirmTransfer = async () => {
     if (!confirmRow) return;
+    await handleTransfer(confirmRow);
     closeConfirm();
-    openTempDialog(confirmRow);
-  };
-  const openTempDialog = async (row) => {
-    setTempRow(row);
-    setTempPassword("");
-    setTempError("");
-    setTempOpen(true);
-    if (!row?.email_address) {
-      setTempError("No email address found for this student.");
-      return;
-    }
-    try {
-      setTempSending(true);
-      await axios.post(`${API_BASE_URL}/send-temp-password`, {
-        student_number: row.student_number,
-        email: row.email_address,
-      });
-    } catch (error) {
-      console.error(error);
-      setTempError("Failed to send temporary password.");
-    } finally {
-      setTempSending(false);
-    }
-  };
-  const handleResendTempPassword = async () => {
-    if (!tempRow?.email_address) {
-      setTempError("No email address found for this student.");
-      return;
-    }
-    try {
-      setTempResending(true);
-      setTempError("");
-      await axios.post(`${API_BASE_URL}/send-temp-password`, {
-        student_number: tempRow.student_number,
-        email: tempRow.email_address,
-      });
-    } catch (error) {
-      console.error(error);
-      setTempError("Failed to resend temporary password.");
-    } finally {
-      setTempResending(false);
-    }
-  };
-  const closeTempDialog = () => {
-    setTempOpen(false);
-    setTempRow(null);
-    setTempPassword("");
-    setTempError("");
-  };
-  const handleVerifyAndTransfer = async () => {
-    if (!tempRow) return;
-    if (!tempPassword.trim()) {
-      setTempError("Please enter the temporary password.");
-      return;
-    }
-    try {
-      setTempVerifying(true);
-      await axios.post(`${API_BASE_URL}/verify-temp-password`, {
-        student_number: tempRow.student_number,
-        tempPassword: tempPassword.trim(),
-      });
-      await handleTransfer(tempRow);
-      closeTempDialog();
-    } catch (error) {
-      console.error(error);
-      setTempError(
-        error?.response?.data?.message || "Temporary password is invalid"
-      );
-    } finally {
-      setTempVerifying(false);
-    }
   };
 
   // 🔥 Slice data for pagination
@@ -429,49 +351,6 @@ const StudentTable = ({ data, paymentType, onRemove }) => {
       </Button>
       <Button onClick={handleConfirmTransfer} variant="contained">
         Confirm
-      </Button>
-    </DialogActions>
-  </Dialog>
-
-  {/* TEMP PASSWORD DIALOG */ }
-  <Dialog open={tempOpen} onClose={closeTempDialog}>
-    <DialogTitle>Enter Temporary Password</DialogTitle>
-    <DialogContent>
-      <DialogContentText sx={{ mb: 2 }}>
-        To continue please enter your temporary password that was sent to
-        your email account.
-      </DialogContentText>
-      <TextField
-        fullWidth
-        size="small"
-        label="Temporary Password"
-        value={tempPassword}
-        onChange={(e) => setTempPassword(e.target.value)}
-        error={Boolean(tempError)}
-        helperText={tempError || " "}
-      />
-    </DialogContent>
-    <DialogActions>
-      <Button onClick={closeTempDialog} color="inherit">
-        Cancel
-      </Button>
-      <Button
-        onClick={handleResendTempPassword}
-        color="inherit"
-        disabled={tempSending || tempResending}
-      >
-        {tempResending ? "Resending..." : "Resend"}
-      </Button>
-      <Button
-        onClick={handleVerifyAndTransfer}
-        variant="contained"
-        disabled={tempSending || tempVerifying || tempResending}
-      >
-        {tempSending
-          ? "Sending..."
-          : tempVerifying
-            ? "Verifying..."
-            : "Continue"}
       </Button>
     </DialogActions>
   </Dialog>

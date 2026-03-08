@@ -13,6 +13,7 @@ import ClassIcon from "@mui/icons-material/Class";
 import SearchIcon from "@mui/icons-material/Search";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import GradeIcon from "@mui/icons-material/Grade";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
 import SchoolIcon from "@mui/icons-material/School";
 import { useNavigate } from "react-router-dom";
 import { FcPrint } from "react-icons/fc";
@@ -396,8 +397,8 @@ const TOR = () => {
     }));
 
     // Constants
-    const MAX_PAGE_HEIGHT_REM = 54;
-    const SUBJECT_HEIGHT_REM = 1.30;
+    const MAX_PAGE_HEIGHT_REM = 43;
+    const SUBJECT_HEIGHT_REM = 1.10;
     const MAX_SUBJECTS_PER_PAGE = Math.floor(MAX_PAGE_HEIGHT_REM / SUBJECT_HEIGHT_REM);
 
     // Function to chunk subjects into pages
@@ -496,7 +497,6 @@ const TOR = () => {
             <Unauthorized />
         );
     }
-
 
     return (
          <Box sx={{ height: "calc(100vh - 150px)", overflowY: "auto", paddingRight: 1, backgroundColor: "transparent", mt: 1, padding: 2 }}>
@@ -626,6 +626,7 @@ const TOR = () => {
                     justifyContent: "space-between",
                     alignItems: "center",
                     width: "100%",
+                    mt: 2,
                 }}
             >
                 {tabs1.map((tab, index) => (
@@ -651,7 +652,7 @@ const TOR = () => {
                                         : "0px 2px 6px rgba(0,0,0,0.15)",
                                 transition: "0.3s ease",
                                 "&:hover": {
-                                    backgroundColor: activeStep === index ? "#000" : "#f5d98f",
+                                    backgroundColor: activeStep === index ? "#000000" : "#f5d98f",
                                 },
                             }}
                         >

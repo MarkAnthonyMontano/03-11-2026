@@ -330,10 +330,6 @@ const MedicalCertificate = () => {
         fetchCurriculums();
     }, []);
 
-
-    console.log("person.program:", person.program);
-    console.log("curriculumOptions:", curriculumOptions);
-
     {
         curriculumOptions.find(
             (item) =>
@@ -1378,3 +1374,5 @@ const MedicalCertificate = () => {
 };
 
 export default MedicalCertificate;
+
+

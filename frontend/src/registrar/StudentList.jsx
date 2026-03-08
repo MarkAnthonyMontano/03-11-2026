@@ -41,6 +41,7 @@ import LoadingOverlay from "../components/LoadingOverlay";
 import SearchIcon from "@mui/icons-material/Search";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import GradeIcon from "@mui/icons-material/Grade";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
 import SchoolIcon from "@mui/icons-material/School";
 
 const StudentList = () => {
@@ -294,11 +295,23 @@ const StudentList = () => {
             const res = await fetch(`${API_BASE_URL}/api/all-students`);
             const data = await res.json();
 
-            // Merge documents by student_number
+            // Merge documents by student_number + year_id + semester_id
             const mergedData = data.reduce((acc, doc) => {
-                const existing = acc.find(p => p.student_number === doc.student_number);
+                const existing = acc.find(
+                    (p) =>
+                        String(p.student_number) === String(doc.student_number) &&
+                        String(p.year_id ?? "") === String(doc.year_id ?? "") &&
+                        String(p.semester_id ?? "") === String(doc.semester_id ?? "")
+                );
                 if (existing) {
                     existing.documents.push({ id: doc.requirements_id, description: doc.description });
+                    // Keep the first non-empty academic values seen across duplicate rows
+                    existing.year_id = existing.year_id ?? doc.year_id;
+                    existing.semester_id = existing.semester_id ?? doc.semester_id;
+                    existing.year_description = existing.year_description ?? doc.year_description;
+                    existing.semester_description = existing.semester_description ?? doc.semester_description;
+                    existing.year_level_id = existing.year_level_id ?? doc.year_level_id;
+                    existing.year_level_description = existing.year_level_description ?? doc.year_level_description;
                 } else {
                     acc.push({
                         ...doc,
@@ -308,7 +321,20 @@ const StudentList = () => {
                 return acc;
             }, []);
 
+            mergedData.sort((a, b) => {
+                const yearA = Number(a.year_id ?? Number.MAX_SAFE_INTEGER);
+                const yearB = Number(b.year_id ?? Number.MAX_SAFE_INTEGER);
+                if (yearA !== yearB) return yearA - yearB;
+
+                const semA = Number(a.semester_id ?? Number.MAX_SAFE_INTEGER);
+                const semB = Number(b.semester_id ?? Number.MAX_SAFE_INTEGER);
+                if (semA !== semB) return semA - semB;
+
+                return String(a.student_number ?? "").localeCompare(String(b.student_number ?? ""));
+            });
+
             setPersons(mergedData);
+            console.log("Student Data: ",mergedData)
         } catch (err) {
             console.error("Error fetching students:", err);
         } finally {
@@ -357,6 +383,7 @@ const StudentList = () => {
             .then((res) => {
                 if (res.data.length > 0) {
                     setSelectedSchoolYear(res.data[0].year_id);
+                    console.log("Active School Year:", res.data[0].year_id);
                     setSelectedSchoolSemester(res.data[0].semester_id);
                 }
             })
@@ -403,24 +430,21 @@ const StudentList = () => {
             `.toLowerCase();
             const matchesSearch = fullText.includes(searchQuery.toLowerCase());
 
-
-
-            /* 🏫 CAMPUS */
+            // /* 🏫 CAMPUS */
             const matchesCampus =
                 !person.campus || personData.campus === person.campus
 
-
             const programInfo = allCurriculums.find(
-                (opt) => opt.curriculum_id?.toString() === (personData.program ?? personData.curriculum_id)?.toString()
+                (opt) => opt.curriculum_id?.toString() === (personData.program_id ?? personData.curriculum_id)?.toString()
             );
 
             const matchesProgram = selectedProgramFilter === "" ||
-                (programInfo?.program_code === selectedProgramFilter) ||
-                (personData.program_description === selectedProgramFilter);
+                (programInfo?.program_id === selectedProgramFilter) ||
+                (personData.program_id === selectedProgramFilter);
 
             const matchesDepartment =
                 selectedDepartmentFilter === "" ||
-                programInfo?.dprtmnt_name === selectedDepartmentFilter;
+                programInfo?.dprtmnt_id === selectedDepartmentFilter;
 
             const matchesSchoolYear =
                 selectedSchoolYear === "" ||
@@ -569,7 +593,7 @@ const StudentList = () => {
             setCurriculumOptions(allCurriculums);
         } else {
             setCurriculumOptions(
-                allCurriculums.filter(opt => opt.dprtmnt_name === selectedDept)
+                allCurriculums.filter(opt => opt.dprtmnt_id === selectedDept)
             );
         }
         setSelectedProgramFilter("");
@@ -1200,7 +1224,7 @@ const StudentList = () => {
                                     displayEmpty
                                 >
                                     {department.map((dep) => (
-                                        <MenuItem key={dep.dprtmnt_id} value={dep.dprtmnt_name}>
+                                        <MenuItem key={dep.dprtmnt_id} value={dep.dprtmnt_id}>
                                             {dep.dprtmnt_name} ({dep.dprtmnt_code})
                                         </MenuItem>
                                     ))}
@@ -1218,7 +1242,7 @@ const StudentList = () => {
                                 >
                                     <MenuItem value="">All Programs</MenuItem>
                                     {curriculumOptions.map((prog) => (
-                                        <MenuItem key={prog.curriculum_id} value={prog.program_code}>
+                                        <MenuItem key={prog.curriculum_id} value={prog.program_id}>
                                             {prog.program_code} - {prog.program_description}
                                         </MenuItem>
                                     ))}
@@ -1276,7 +1300,9 @@ const StudentList = () => {
 
                     <TableBody>
                         {currentPersons.map((person, index) => (
-                            <TableRow key={person.person_id ?? person.student_number}>
+                            <TableRow
+                                key={`${person.student_number ?? ""}-${person.year_id ?? ""}-${person.semester_id ?? ""}`}
+                            >
                                 {/* # */}
                                 <TableCell sx={{ textAlign: "center", border: `2px solid ${borderColor}` }}>
                                     {index + 1}
@@ -1348,6 +1374,21 @@ const StudentList = () => {
                                 </TableCell>
                             </TableRow>
                         ))}
+                        {currentPersons.length === 0 && (
+                            <TableRow>
+                                <TableCell
+                                    colSpan={10}
+                                    sx={{
+                                        textAlign: "center",
+                                        border: `2px solid ${borderColor}`,
+                                        color: "#777",
+                                        py: 3,
+                                    }}
+                                >
+                                    No students found for the selected filters.
+                                </TableCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                 </Table>
             </TableContainer>

@@ -225,6 +225,9 @@ import Receipt from './superadmin/Receipt';
 import ReceiptCounterAssignment from "./superadmin/ReceiptCounterAssignment";
 import MatriculationPaymentModule from "./superadmin/MatriculationPaymentModule";
 import SectionSlotMonitoring from "./superadmin/SlotMonitoring";
+import SearchCorForCollege from "./registrar/SearchCorForCollege";
+import CertificateOfRegistrationForCollege from "./registrar/CertificateOfRegistrationForCollege";
+import CourseTaggingForCollege from "./registrar/CourseTaggingForCollege";
 
 // ✅ Create a Context so all components can access settings
 export const SettingsContext = createContext(null);
@@ -470,11 +473,15 @@ function App() {
                     <Route path="/student_numbering" element={<ProtectedRoute><StudentNumbering /></ProtectedRoute>} />
                     <Route path="/student_numbering_per_college" element={<ProtectedRoute><StudentNumberingPerCollege /></ProtectedRoute>} />
                     <Route path="/course_tagging" element={<ProtectedRoute><CourseTagging /></ProtectedRoute>} />
+                    <Route path="/course_tagging_for_college" element={<ProtectedRoute><CourseTaggingForCollege /></ProtectedRoute>} />
                     <Route path="/schedule_checker/:dprtmnt_id" element={<ProtectedRoute><ScheduleChecker /></ProtectedRoute>} />
                     <Route path="/change_grade_period" element={<ProtectedRoute><ChangeGradingPeriod /></ProtectedRoute>} />
                     <Route path="/department_room" element={<ProtectedRoute><DepartmentRoom /></ProtectedRoute>} />
                     <Route path="/search_cor" element={<ProtectedRoute><SearchCertificateOfRegistration /></ProtectedRoute>} />
+                    <Route path="/search_cor_for_college" element={<ProtectedRoute><SearchCorForCollege /></ProtectedRoute>} />
+
                     <Route path="/cor" element={<ProtectedRoute><CertificateOfRegistration /></ProtectedRoute>} />
+                    <Route path="/cor_for_college" element={<ProtectedRoute><CertificateOfRegistrationForCollege /></ProtectedRoute>} />
                     <Route path="/select_college" element={<ProtectedRoute><ScheduleFilterer /></ProtectedRoute>} />
                     <Route path="/college_schedule_plotting" element={<ProtectedRoute><CollegeScheduleChecker /></ProtectedRoute>} />
                     <Route path="/assign_entrance_exam" element={<ProtectedRoute><AssignEntranceExam /></ProtectedRoute>} />

@@ -184,10 +184,15 @@ const StudentGradingPage = () => {
 
   const getUnitDisplay = (row) => {
     const { course_unit, lab_unit } = row;
-    if (course_unit === 0 && lab_unit === 0) return "";
-    if (course_unit === 0) return lab_unit;
-    if (lab_unit === 0) return course_unit;
-    return course_unit + lab_unit;
+
+    const course = parseInt(course_unit) || 0;
+    const lab = parseInt(lab_unit) || 0;
+
+    if (course === 0 && lab === 0) return "";
+    if (course === 0) return lab;
+    if (lab === 0) return course;
+
+    return course + lab;
   };
 
 // 🔒 Disable right-click

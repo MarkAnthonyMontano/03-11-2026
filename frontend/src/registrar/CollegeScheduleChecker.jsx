@@ -160,6 +160,8 @@ const CollegeScheduleChecker = () => {
   const [roomFilter, setRoomFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("asc");
   const [searchTerm, setSearchTerm] = useState("");
+  const [openReviewDialog, setOpenReviewDialog] = useState(false);
+  const [selectedReviewEmployeeId, setSelectedReviewEmployeeId] = useState("");
 
   const fetchPersonData = async () => {
     try {
@@ -774,6 +776,46 @@ const CollegeScheduleChecker = () => {
     indexOfLastItem
   );
 
+  const daySortOrder = {
+    MON: 1,
+    TUE: 2,
+    WED: 3,
+    THU: 4,
+    FRI: 5,
+    SAT: 6,
+    SUN: 7,
+  };
+
+  const parseScheduleTimeToMinutes = (value) => {
+    if (!value) return Number.MAX_SAFE_INTEGER;
+    const match = value.toString().trim().match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (!match) return Number.MAX_SAFE_INTEGER;
+    let hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const meridian = (match[3] || "").toUpperCase();
+    if (meridian === "PM" && hours < 12) hours += 12;
+    if (meridian === "AM" && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  };
+
+  const reviewedProfessorSchedules = selectedReviewEmployeeId
+    ? allschedules
+      .filter((row) => String(row.employee_id || "") === String(selectedReviewEmployeeId))
+      .sort((a, b) => {
+        const dayA = daySortOrder[(a.day || "").toUpperCase()] || 99;
+        const dayB = daySortOrder[(b.day || "").toUpperCase()] || 99;
+        if (dayA !== dayB) return dayA - dayB;
+
+        const startA = parseScheduleTimeToMinutes(a.school_time_start);
+        const startB = parseScheduleTimeToMinutes(b.school_time_start);
+        if (startA !== startB) return startA - startB;
+
+        const endA = parseScheduleTimeToMinutes(a.school_time_end);
+        const endB = parseScheduleTimeToMinutes(b.school_time_end);
+        return endA - endB;
+      })
+    : [];
+
   useEffect(() => {
     setCurrentPage(1);
   }, [
@@ -887,7 +929,7 @@ const CollegeScheduleChecker = () => {
               </span>
             )}
             {entry.section_description && entry.section_description !== 0 && entry.section_description !== "0" && entry.room_description && (
-              <span className="block truncate text-[8px]">{entry.room_description}</span>
+              <span className="block truncate text-[8px] max-w-[100px]">{entry.room_description}</span>
             )}
           </>;
       } else {
@@ -1011,29 +1053,6 @@ const CollegeScheduleChecker = () => {
         >
           SCHEDULE CHECKER
         </Typography>
-
-        <TextField
-          variant="outlined"
-          size="small"
-          placeholder="Search Name / ID"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{
-            width: 350,
-            backgroundColor: "#fff",
-            borderRadius: 1,
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "10px",
-            },
-            "& input": {
-              fontSize: "14px",
-              padding: "10px",
-            },
-          }}
-          InputProps={{
-            startAdornment: <SearchIcon sx={{ mr: 1, color: "gray" }} />,
-          }}
-        />
       </Box>
 
       <hr style={{ border: "1px solid #ccc", width: "100%" }} />
@@ -1299,25 +1318,34 @@ const CollegeScheduleChecker = () => {
             </div>
           </form>
         </Box>
-        <Box sx={{ display: "flex", flexDirection: "column", marginTop: "1rem", gap: "0.4rem" }}>
-          <Button
-            className="hover:bg-[#000000] text-white px-6 py-2 rounded w-[200px]"
-            variant="contained"
-            onClick={() => {
-              const newMode = !isDesignationMode;
-              setIsDesignationMode(newMode);
+        <Box sx={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button
+              className="hover:bg-[#000000] text-white px-6 py-2 rounded w-[200px]"
+              variant="contained"
+              onClick={() => {
+                const newMode = !isDesignationMode;
+                setIsDesignationMode(newMode);
 
-              if (newMode) {
-                // switched FROM regular → designation
-                fetchDesignationList();
-              } else {
-                // switched FROM designation → regular
-                fetchCourseList();
-              }
-            }}
-          >
-            {isDesignationMode ? "Assign Regular Load" : "Assign Designation"}
-          </Button>
+                if (newMode) {
+                  // switched FROM regular → designation
+                  fetchDesignationList();
+                } else {
+                  // switched FROM designation → regular
+                  fetchCourseList();
+                }
+              }}
+            >
+              {isDesignationMode ? "Assign Regular Load" : "Assign Designation"}
+            </Button>
+            <Button
+              className="hover:bg-[#000000] text-white px-6 py-2 rounded w-[200px]"
+              variant="contained"
+              onClick={() => setOpenReviewDialog(true)}
+            >
+              Review Schedule
+            </Button>
+          </Box>
 
           <table className="mt-[0.7rem]">
             <thead className="bg-[#c0c0c0]">
@@ -2364,6 +2392,96 @@ const CollegeScheduleChecker = () => {
       </Box>
 
       <Dialog
+        open={openReviewDialog}
+        onClose={() => setOpenReviewDialog(false)}
+        fullWidth
+        maxWidth="lg"
+      >
+        <DialogTitle>Review Schedule</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 1, mb: 2 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="review-prof-label">Professor</InputLabel>
+              <Select
+                labelId="review-prof-label"
+                label="Professor"
+                value={selectedReviewEmployeeId}
+                onChange={(e) => setSelectedReviewEmployeeId(e.target.value)}
+              >
+                <MenuItem value="">
+                  <em>Select Professor</em>
+                </MenuItem>
+                {filteredProfessors.map((prof) => (
+                  <MenuItem key={prof.prof_id} value={prof.employee_id}>
+                    {prof.employee_id} - {prof.fname} {prof.mname?.charAt(0)}. {prof.lname}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+
+          {selectedReviewEmployeeId ? (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>#</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Employee ID</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Professor Name</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Course Assigned</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Section Assigned</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Day</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Time Start</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Time End</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Room</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Types</td>
+                  <td style={{ border: "solid black 1px", padding: "5px 0px", textAlign: "center", fontSize: "0.9rem", fontWeight: "600" }}>Academic Year</td>
+                </tr>
+              </thead>
+              <tbody>
+                {reviewedProfessorSchedules.map((row, index) => (
+                  <tr key={`${row.employee_id}-${row.day}-${row.school_time_start}-${row.school_time_end}-${index}`}>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{index + 1}</td>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{row.employee_id}</td>
+                    <td style={{ border: "solid black 1px", padding: "4px 8px", fontSize: "0.85rem" }}>
+                      {row.fname} {row.mname?.charAt(0)}. {row.lname}
+                    </td>
+                    <td style={{ border: "solid black 1px", padding: "4px 8px", fontSize: "0.85rem" }}>{row.course_code}</td>
+                    <td style={{ border: "solid black 1px", padding: "4px 8px", fontSize: "0.85rem" }}>
+                      {row.program_code}-{row.section_description}
+                    </td>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{row.day}</td>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{row.school_time_start}</td>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{row.school_time_end}</td>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>{row.room_description}</td>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>
+                      {row.ishonorarium === 1 ? "Honorarium" : "Regular Class"}
+                    </td>
+                    <td style={{ textAlign: "center", border: "solid black 1px", padding: "4px", fontSize: "0.85rem" }}>
+                      {row.current_year}-{row.next_year}, {row.semester_description}
+                    </td>
+                  </tr>
+                ))}
+                {reviewedProfessorSchedules.length === 0 && (
+                  <tr>
+                    <td colSpan={11} style={{ textAlign: "center", border: "solid black 1px", padding: "8px", fontSize: "0.85rem" }}>
+                      No schedule found for the selected professor.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Select a professor to review schedule.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenReviewDialog(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
         open={openDialogue}
         onClose={() => {
           setOpenDialogue(false);
@@ -2424,3 +2542,5 @@ const CollegeScheduleChecker = () => {
 };
 
 export default CollegeScheduleChecker;
+
+
